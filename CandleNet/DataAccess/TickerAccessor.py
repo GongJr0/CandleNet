@@ -1,73 +1,20 @@
 import pandas as pd
-import datetime as dt
 import yfinance as yf  # type: ignore
-from enum import Enum
-from typing import Literal, Union
-from functools import wraps
 import warnings
+import pickle
 
-INTERVAL_TYPE = Union[None, Literal['1m','2m','5m','15m','30m','60m','90m','1h','1d','5d','1wk','1mo','3mo']]
-PERIOD_TYPE = Union[None, Literal['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']]
-DATE_TYPE = Union[None, str, dt.datetime]
+from CandleNet.Cache import IndexCache
+from CandleNet.Cache.AbstractCache import CallerType, LogType, TriggerType
+from .utils import (format_ticker, is_valid_period, is_valid_interval,
+                    INDEX, DATE_TYPE, PERIOD_TYPE, INTERVAL_TYPE, INDEX_TYPE, VALID_INDEX)
 
-class INDEX(Enum):
-    # (wiki_url, table_index, col_name)
-    GSPC = ('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies', 0, 'Symbol')
-    NDX = ('https://en.wikipedia.org/wiki/Nasdaq-100', 4, 'Ticker')
-    DJI = ('https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average', 2, 'Symbol')
-
-
-VALID_INDEX: list[str] = INDEX._member_names_
-INDEX_TYPE = Literal['SP500', 'NDX', 'DJI']
+cache = IndexCache()
 
 
 class TickerAccessor:
     def __init__(self):
         # static
         ...
-
-    @staticmethod
-    def format_ticker(ticker: str) -> str:
-        """
-        Formats the stock ticker to uppercase and removes any whitespace.
-        """
-        ticker = ticker.strip().upper().replace('.', '-')
-        return ticker
-
-    @staticmethod
-    def is_valid_period(func):
-        """
-        Checks if the provided start and end dates or period are valid.
-        """
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            start = kwargs.get('start', None)
-            end = kwargs.get('end', None)
-            period = kwargs.get('period', None)
-
-            has_dates = bool(start and end)
-            has_period = bool(period is not None)
-
-            assert (has_dates ^ has_period), "You must provide either start and end dates or a period, but not both."
-            if has_dates:
-                assert start < end, "Start date must be before end date."
-            elif has_period:
-                assert period in ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max'], \
-                    "Invalid period specified."
-            return func(*args, **kwargs)
-        return wrapper
-
-    @staticmethod
-    def is_valid_interval(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            interval = kwargs.get('interval', None) or "1d"
-
-            if interval:
-                assert interval in ['1m','2m','5m','15m','30m','60m','90m','1h','1d','5d','1wk','1mo','3mo'], \
-                "Invalid interval specified."
-            return func(*args, **kwargs)
-        return wrapper
 
     @staticmethod
     @is_valid_period
@@ -79,7 +26,7 @@ class TickerAccessor:
                    period: PERIOD_TYPE = None,
                    interval: INTERVAL_TYPE = None) -> pd.DataFrame:
 
-        ticker = TickerAccessor.format_ticker(ticker)
+        ticker = format_ticker(ticker)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             return yf.download(ticker, start=start, end=end, period=period, interval=interval)
@@ -97,10 +44,41 @@ class TickerAccessor:
         Fetches symbols for a given index with optional date range or period.
         """
         assert index in VALID_INDEX, "Invalid index provided."
+        with cache:
+            key = cache.cache_keygen(index, start=start, end=end, period=period, interval=interval)
+            lookup = cache.lookup(key).result()
+            if lookup:
+                cache.log(
+                    f"Cache hit on {index} with key {key.hex()}. Returning cached data.",
+                    type_=LogType.INFO,
+                    caller=CallerType.CLASS,
+                    trigger=TriggerType.USER
+                )
+                return pickle.loads(lookup['data'])
+
         url, table_index, col_name = INDEX[index].value
         tickers = pd.read_html(url)[table_index][col_name].tolist()
-        tickers = list(map(TickerAccessor.format_ticker, tickers))
+        tickers = list(map(format_ticker, tickers))
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            return yf.download(tickers, start=start, end=end, period=period, interval=interval)
+            with cache:
+                df = yf.download(tickers, start=start, end=end, period=period, interval=interval)
+                if df.empty:
+                    raise ValueError(f"No data found for index {index} with the specified parameters.")
+                cache.insert(key, {'index_name': index, 'data': pickle.dumps(df)})
+                cache.log(
+                    f"Cache miss on {index} with key {key.hex()}. Downloaded and cached data.",
+                    type_=LogType.INFO,
+                    caller=CallerType.CLASS,
+                    trigger=TriggerType.USER
+                )
+            return df
+
+    @staticmethod
+    def clear():
+        """
+        Clears the cache.
+        """
+        with cache:
+            cache.clear()
