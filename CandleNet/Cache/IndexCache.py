@@ -19,9 +19,7 @@ class IndexCache(AbstractCache):
 
         super().__init__(
             self.name,
-            self.col_spec,
-            TTL=60*60,
-            BYTES_LIMIT=0.01e6  # 10 KB limit for index data
+            self.col_spec
         )
 
     @staticmethod

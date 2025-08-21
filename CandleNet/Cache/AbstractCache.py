@@ -506,9 +506,10 @@ class AbstractCache(ABC):
             SELECT rowid FROM {self.name}
             WHERE expiry_ts < ?
             LIMIT 1000
-        )
+        );
         """
         cur.execute(query, (dt.datetime.now(dt.UTC).isoformat(),))
+        cur.execute(f"VACUUM;")
         return cur.rowcount
 
     def _clear(self) -> None:
@@ -519,7 +520,7 @@ class AbstractCache(ABC):
 
         def clear_cache(cur: sqlite3.Cursor):
             cur.execute(f"DELETE FROM {self.name}")
-            cur.execute(f"VACUUM {self.name}")
+            cur.execute(f"VACUUM;")
 
         _, cur = self._get_local_con()
         clear_cache(cur)

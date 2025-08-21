@@ -29,7 +29,8 @@ class TickerAccessor:
         ticker = format_ticker(ticker)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            return yf.download(ticker, start=start, end=end, period=period, interval=interval)
+            out: pd.DataFrame = yf.download(ticker, start=start, end=end, period=period, interval=interval)
+            return out
 
     @staticmethod
     @is_valid_period
@@ -54,7 +55,8 @@ class TickerAccessor:
                     caller=CallerType.CLASS,
                     trigger=TriggerType.USER
                 )
-                return pickle.loads(lookup['data'])
+                out: pd.DataFrame = pickle.loads(lookup['data'])
+                return out
 
         url, table_index, col_name = INDEX[index].value
         tickers = pd.read_html(url)[table_index][col_name].tolist()
@@ -63,9 +65,10 @@ class TickerAccessor:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             with cache:
-                df = yf.download(tickers, start=start, end=end, period=period, interval=interval)
+                df: pd.DataFrame = yf.download(tickers, start=start, end=end, period=period, interval=interval)
                 if df.empty:
                     raise ValueError(f"No data found for index {index} with the specified parameters.")
+                df = df.swaplevel(0, 1, axis=1)
                 cache.insert(key, {'index_name': index, 'data': pickle.dumps(df)})
                 cache.log(
                     f"Cache miss on {index} with key {key.hex()}. Downloaded and cached data.",

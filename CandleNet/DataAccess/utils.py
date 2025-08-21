@@ -1,7 +1,11 @@
+import pandas as pd
 import datetime as dt
 from enum import Enum
-from typing import Literal, Union
+from typing import Literal, Union, cast
 from functools import wraps
+import numpy as np
+from inspect import signature
+
 
 INTERVAL_TYPE = Union[None, Literal['1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1wk', '1mo', '3mo']]
 PERIOD_TYPE = Union[None, Literal['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']]
@@ -16,7 +20,7 @@ class INDEX(Enum):
 
 
 VALID_INDEX: list[str] = INDEX._member_names_
-INDEX_TYPE = Literal['SP500', 'NDX', 'DJI']
+INDEX_TYPE = Literal['GSPC', 'NDX', 'DJI']
 
 
 def format_ticker(ticker: str) -> str:
@@ -43,7 +47,7 @@ def is_valid_period(func):
 
         assert (has_dates ^ has_period), "You must provide either start and end dates or a period, but not both."
         if has_dates:
-            assert start < end, "Start date must be before end date."
+            assert cast(dt.datetime, start) < cast(dt.datetime, end), "Start date must be before end date."
         elif has_period:
             assert period in ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max'], \
                 "Invalid period specified."
@@ -87,3 +91,33 @@ PERIOD_TO_TIMEDELTA = {
     '10y': dt.timedelta(days=3650),
     'ytd': ytd_timedelta(),  # Year to date is handled separately
 }
+
+ML_GLOBAL_INT_TYPE = np.int32
+ML_GLOBAL_FLOAT_TYPE = np.float64
+
+
+def returns_dataframe(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        ret_type = signature(func).return_annotation
+        assert ret_type == pd.DataFrame, (f"Function {func.__name__} must return a DataFrame "
+                                          f"and have the return type annotated.")
+        return func(*args, **kwargs)
+    return wrapper
+
+
+def cast_global_ml(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        res = func(*args, **kwargs)
+        if isinstance(res, pd.DataFrame):
+            int_reduce = res.select_dtypes(include=[int]).columns
+            float_reduce = res.select_dtypes(include=[float]).columns
+
+            res.loc[:, int_reduce] = res[int_reduce].astype(ML_GLOBAL_INT_TYPE)
+            res.loc[:, float_reduce] = res[float_reduce].astype(ML_GLOBAL_FLOAT_TYPE)
+            return res
+        else:
+            raise TypeError(f"Function {func.__name__} without a DataFrame return type has been called. "
+                            f"Did you forget to use @returns_dataframe?")
+    return wrapper
