@@ -5,12 +5,17 @@ from .ticker_data import TickerData
 from ..cache.ticker_cache import TickerCache
 from ..sentiment import get_sentiment_obj
 from ..utils import get_lib
-import yfinance as yf
+import yfinance as yf  # type: ignore[import-untyped]
 import pandas as pd
+import numpy as np
 
 
 class Ticker:
-    def __init__(self, symbol: str, _from_bulk_download: bool = False, raw_data: Optional[pd.DataFrame]=None, _from_cache: TickerData = None):
+    def __init__(self,
+                 symbol: str,
+                 _from_bulk_download: bool = False,
+                raw_data: Optional[pd.DataFrame] = None,
+                 _from_cache: Optional[TickerData] = None):
         self.symbol = symbol
         self._ticker = None
         self.s_polarity = get_sentiment_obj()
@@ -18,7 +23,7 @@ class Ticker:
         if _from_cache:
             self.data = _from_cache
             self.raw_data = None
-            self.news = None
+            self.news: dict | None = None
             return
 
 
@@ -48,11 +53,16 @@ class Ticker:
                         'sentiment': sentiment
                     }
         else:
+            assert raw_data is not None, "raw_data must be provided when _from_bulk_download is True."
             self.raw_data = raw_data
             self.news = self.ticker.news
-            price = pd.Series(self.raw_data['Close'].values.flatten(), index=self.raw_data.index)
-            volume = pd.Series(self.raw_data['Volume'].values.flatten(), index=self.raw_data.index)
-            hilo = self.raw_data[['High', 'Low']]
+
+            cls: np.ndarray = raw_data['Close'].to_numpy()
+            vol: np.ndarray = raw_data['Volume'].to_numpy()
+
+            price = pd.Series(cls.flatten(), index=raw_data.index)
+            volume = pd.Series(vol.flatten(), index=raw_data.index)
+            hilo = raw_data[['High', 'Low']]
             sentiment = self.polarity()
 
             with TickerCache() as c:
@@ -76,6 +86,7 @@ class Ticker:
 
 
     def process_news(self) -> tuple[list[str], list[str], list[str]]:
+        assert self.news is not None
         titles, summaries, dates = [], [], []
         for a in self.news:
             # adapt keys if needed
@@ -95,15 +106,19 @@ class Ticker:
         summary_s = self.s_polarity.pipe_sentiment(summaries)
         s = (2 / 3) * title_s + (1 / 3) * summary_s
 
+        d_ser: pd.Series = pd.to_datetime(pd.Series(dates), errors="coerce", utc=True)
 
-        d = pd.to_datetime(dates, errors="coerce", utc=True)
+        nans: pd.Series = d_ser.isna()
+        na_proportion: float = float(nans.mean())
 
-        if d.isna().mean() > 0.5:
-            d = pd.to_datetime(pd.Series(dates), unit="s", errors="coerce", utc=True)
+        if na_proportion > 0.5:
+            d_ser = pd.to_datetime(pd.Series(dates), unit="s", errors="coerce", utc=True)
 
+        # finalize as DatetimeIndex
+        d: pd.DatetimeIndex = pd.DatetimeIndex(d_ser)
 
         m = ~d.isna()
-        d = d[m];
+        d = d[m]
         s = s[m]
 
         ser = pd.Series(s, index=d).sort_index()

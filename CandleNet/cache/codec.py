@@ -2,6 +2,7 @@ import io
 import pickle
 import pandas as pd
 import numpy as np
+import sys
 
 
 
@@ -35,9 +36,9 @@ class Codec:
             import pyarrow.ipc as ipc
         except ImportError:
             install = input("pyarrow is required for caching. Do you want to install it now? (y/n): ")
-            if install.lower() == 'y' or install.lower() == 'yes':
+            if install.lower() in {"y", "yes"}:
                 import subprocess
-                subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pyarrow'])
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "pyarrow"])
                 import pyarrow as pa
                 import pyarrow.ipc as ipc
             else:
@@ -45,7 +46,8 @@ class Codec:
 
         source = io.BytesIO(blob)
         with ipc.open_stream(source) as reader:
-            return reader.read_pandas()
+            table = reader.read_all()  # pa.Table
+            return table.to_pandas()  # pd.DataFrame
 
     @staticmethod
     def enc_pickle(obj) -> bytes:

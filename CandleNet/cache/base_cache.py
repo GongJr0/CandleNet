@@ -5,13 +5,14 @@ import datetime as dt
 import sqlite3 as sql
 from ..logger import Logger
 from ..logger import LogType, OriginType
+from typing import Any, Self
 
 
 class BaseCache(ABC):
     def __init__(self, TTL: int) -> None:
         self.logger = Logger()
         self._TTL = TTL
-        self.con = None
+        self.con: sql.Connection | None = None
 
 
     def _init_table(self) -> None:
@@ -47,15 +48,15 @@ class BaseCache(ABC):
         return
 
     @abstractmethod
-    def insert(self, *args, **kwargs) -> None:
+    def insert(self, *args: Any, **kwargs: Any) -> None:
         pass
 
     @abstractmethod
-    def fetch(self, query) -> list:
+    def fetch(self, *args: Any, **kwargs: Any) -> Any:
         pass
 
     @abstractmethod
-    def delete(self, query) -> None:
+    def delete(self, *args: Any, **kwargs: Any) -> None:
         pass
 
     @abstractmethod
@@ -108,11 +109,12 @@ class BaseCache(ABC):
             os.makedirs(base_dir, exist_ok=True)
         return base_dir.joinpath('cache.db').as_posix()
 
-    def check_con(self):
+    def check_con(self) -> sql.Connection:
         if self.con is None:
             raise RuntimeError('Establish cache connection through context manager before performing operations.')
+        return self.con
 
-    def __enter__(self) -> 'BaseCache':
+    def __enter__(self) -> Self:
         self.con = sql.connect(self.DB_PATH, isolation_level=None)
         assert self.con is not None, "__enter__ failed to establish database connection."
         self._init_table()
