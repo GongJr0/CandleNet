@@ -344,6 +344,36 @@ class Synergy:
         diag = np.eye(s.shape[0]).astype(bool)
         return s[~diag.astype(bool)].mean()
 
+    def synergy_describe(self) -> dict[str, FRAME]:
+        s = self.sector_synergy()
+        base_desc = s.describe()
+
+        sectors: pd.Series = s.mean()
+
+        top_3 = sectors.nlargest(3)
+        bottom_3 = sectors.nsmallest(3)
+
+        # Per Sector Quartiles
+        qdf = pd.DataFrame(index=s.index)
+
+        qdf['Q1'] = s.apply(lambda x: pd.Series(x).quantile(0.25), axis=0)
+        qdf['M'] = s.apply(lambda x: pd.Series(x).quantile(0.50), axis=0)
+        qdf['Q3'] = s.apply(lambda x: pd.Series(x).quantile(0.75), axis=0)
+        qdf['IQR'] = qdf['Q3'] - qdf['Q1']
+
+        return {
+            "describe": base_desc,
+            "sectors_mean": sectors,
+            "top_3": top_3,
+            "bottom_3": bottom_3,
+            "quartiles": qdf
+        }
+
+
+
+
+
+
     @staticmethod
     def plot_triu_hist(
         matrix: pd.DataFrame,

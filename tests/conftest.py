@@ -3,6 +3,7 @@ from CandleNet import LogType, OriginType
 from CandleNet import gspc_from_cache
 from CandleNet.cache.ticker_cache import TickerCache
 from CandleNet.ticker.ticker import Ticker
+from CandleNet.synergy_matrix import Synergy
 import random
 import string
 import os
@@ -32,6 +33,7 @@ def sp500_symbols():
     cached = gspc_from_cache()
     return list(cached) if isinstance(cached, dict) else cached  # robust
 
+
 @fixture(scope="function")
 def ticker(sp500_symbols):
     symbol = random.choice(sp500_symbols)
@@ -39,6 +41,11 @@ def ticker(sp500_symbols):
         resp = c[symbol]
         assert resp is not None, f"{symbol} not present in cache"
         return Ticker(symbol, _from_cache=resp)
+
+
+@fixture
+def s():
+    return Synergy()
 
 
 # Optional seed for reproducibility

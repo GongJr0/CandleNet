@@ -4,6 +4,8 @@ from CandleNet import Ticker
 import warnings
 
 
+@pytest.mark.fast
+@pytest.mark.unit
 @pytest.mark.parametrize("i", range(200))
 def test_ticker(i, ticker):
 
