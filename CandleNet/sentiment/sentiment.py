@@ -5,7 +5,7 @@ import threading
 
 
 def polarity(probs: tuple) -> float:
-    return probs[0]-probs[1]
+    return probs[0] - probs[1]
 
 
 def distil(text: str) -> str:

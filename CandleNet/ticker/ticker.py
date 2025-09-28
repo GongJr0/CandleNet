@@ -11,11 +11,13 @@ import numpy as np
 
 
 class Ticker:
-    def __init__(self,
-                 symbol: str,
-                 _from_bulk_download: bool = False,
-                raw_data: Optional[pd.DataFrame] = None,
-                 _from_cache: Optional[TickerData] = None):
+    def __init__(
+        self,
+        symbol: str,
+        _from_bulk_download: bool = False,
+        raw_data: Optional[pd.DataFrame] = None,
+        _from_cache: Optional[TickerData] = None,
+    ):
         self.symbol = symbol
         self._ticker = None
         self.s_polarity = get_sentiment_obj()
@@ -26,54 +28,62 @@ class Ticker:
             self.news: dict | None = None
             return
 
-
         if not _from_bulk_download:
             with TickerCache() as c:
                 if (resp := c[symbol]) is not None:
                     self.raw_data = None
                     self.news = None
-                    price = resp['price']
-                    volume = resp['volume']
-                    hilo = resp['hilo']
-                    sentiment = resp['sentiment']
+                    price = resp["price"]
+                    volume = resp["volume"]
+                    hilo = resp["hilo"]
+                    sentiment = resp["sentiment"]
 
                 else:
-                    self.raw_data = yf.download(symbol, period='1y', interval='1d', auto_adjust=True)
+                    self.raw_data = yf.download(
+                        symbol, period="1y", interval="1d", auto_adjust=True
+                    )
                     self.news = self.ticker.news
-                    price = pd.Series(self.raw_data['Close'].values.flatten(), index=self.raw_data.index)
-                    volume = pd.Series(self.raw_data['Volume'].values.flatten(), index=self.raw_data.index)
-                    hilo = self.raw_data[['High', 'Low']]
+                    price = pd.Series(
+                        self.raw_data["Close"].values.flatten(),
+                        index=self.raw_data.index,
+                    )
+                    volume = pd.Series(
+                        self.raw_data["Volume"].values.flatten(),
+                        index=self.raw_data.index,
+                    )
+                    hilo = self.raw_data[["High", "Low"]]
                     sentiment = self.polarity()
 
                     c[symbol] = {
-                        'ticker': symbol,
-                        'price': price,
-                        'volume': volume,
-                        'hilo': hilo,
-                        'sentiment': sentiment
+                        "ticker": symbol,
+                        "price": price,
+                        "volume": volume,
+                        "hilo": hilo,
+                        "sentiment": sentiment,
                     }
         else:
-            assert raw_data is not None, "raw_data must be provided when _from_bulk_download is True."
+            assert (
+                raw_data is not None
+            ), "raw_data must be provided when _from_bulk_download is True."
             self.raw_data = raw_data
             self.news = self.ticker.news
 
-            cls: np.ndarray = raw_data['Close'].to_numpy()
-            vol: np.ndarray = raw_data['Volume'].to_numpy()
+            cls: np.ndarray = raw_data["Close"].to_numpy()
+            vol: np.ndarray = raw_data["Volume"].to_numpy()
 
             price = pd.Series(cls.flatten(), index=raw_data.index)
             volume = pd.Series(vol.flatten(), index=raw_data.index)
-            hilo = raw_data[['High', 'Low']]
+            hilo = raw_data[["High", "Low"]]
             sentiment = self.polarity()
 
             with TickerCache() as c:
                 c[symbol] = {
-                    'ticker': symbol,
-                    'price': price,
-                    'volume': volume,
-                    'hilo': hilo,
-                    'sentiment': sentiment
+                    "ticker": symbol,
+                    "price": price,
+                    "volume": volume,
+                    "hilo": hilo,
+                    "sentiment": sentiment,
                 }
-
 
         self.data = TickerData(
             ticker=symbol,
@@ -83,15 +93,15 @@ class Ticker:
             sentiment=sentiment,
         )
 
-
-
     def process_news(self) -> tuple[list[str], list[str], list[str]]:
         assert self.news is not None
         titles, summaries, dates = [], [], []
         for a in self.news:
             # adapt keys if needed
             titles.append(a.get("title", "") or a.get("content", {}).get("title", ""))
-            summaries.append(a.get("summary", "") or a.get("content", {}).get("summary", ""))
+            summaries.append(
+                a.get("summary", "") or a.get("content", {}).get("summary", "")
+            )
             dates.append(
                 a.get("providerPublishTime")
                 or a.get("date")
@@ -112,7 +122,9 @@ class Ticker:
         na_proportion: float = float(nans.mean())
 
         if na_proportion > 0.5:
-            d_ser = pd.to_datetime(pd.Series(dates), unit="s", errors="coerce", utc=True)
+            d_ser = pd.to_datetime(
+                pd.Series(dates), unit="s", errors="coerce", utc=True
+            )
 
         # finalize as DatetimeIndex
         d: pd.DatetimeIndex = pd.DatetimeIndex(d_ser)
@@ -124,7 +136,7 @@ class Ticker:
         ser = pd.Series(s, index=d).sort_index()
 
         # EWMA with 7-day half-life → per pandas: halflife in days if index is datetime
-        ewma = ser.ewm(halflife=pd.Timedelta(7, 'days'), times=ser.index).mean()
+        ewma = ser.ewm(halflife=pd.Timedelta(7, "days"), times=ser.index).mean()
         return float(ewma.iloc[-1])
 
     def polarity(self) -> float | None:
@@ -135,19 +147,19 @@ class Ticker:
 
     @property
     def price(self) -> pd.Series:
-        return self.data['price']
+        return self.data["price"]
 
     @property
     def volume(self) -> pd.Series:
-        return self.data['volume']
+        return self.data["volume"]
 
     @property
     def hilo(self) -> pd.DataFrame:
-        return self.data['hilo']
+        return self.data["hilo"]
 
     @property
     def sentiment(self) -> Optional[float]:
-        return self.data['sentiment']
+        return self.data["sentiment"]
 
     @property
     def ticker(self) -> yf.Ticker:
@@ -156,34 +168,38 @@ class Ticker:
         return self._ticker
 
 
-
-
 def _get_gspc() -> list:
     try:
         import lxml
     except ImportError:
         yn = input("lxml is required to fetch S&P 500 list. Install it now? (y/n): ")
-        if yn.lower() in ['y', 'yes']:
+        if yn.lower() in ["y", "yes"]:
             get_lib("lxml")
         else:
-            raise ImportError("lxml is required to fetch S&P 500 list. Please install it and try again.")
+            raise ImportError(
+                "lxml is required to fetch S&P 500 list. Please install it and try again."
+            )
 
     try:
         import html5lib
     except ImportError:
-        yn = input("html5lib is required to fetch S&P 500 list. Install it now? (y/n): ")
-        if yn.lower() in ['y', 'yes']:
+        yn = input(
+            "html5lib is required to fetch S&P 500 list. Install it now? (y/n): "
+        )
+        if yn.lower() in ["y", "yes"]:
             get_lib("html5lib")
         else:
-            raise ImportError("html5lib is required to fetch S&P 500 list. Please install it and try again.")
+            raise ImportError(
+                "html5lib is required to fetch S&P 500 list. Please install it and try again."
+            )
 
     table_url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-    headers = {'User-Agent': 'Mozilla/5.0'}
+    headers = {"User-Agent": "Mozilla/5.0"}
     resp = requests.get(table_url, headers=headers)
     if resp.status_code != requests.codes.ok:
         raise ConnectionError(f"Failed to fetch S&P 500 list: {resp.status_code}")
     tables = pd.read_html(StringIO(resp.text))
-    symbols = tables[0]['Symbol'].tolist()
+    symbols = tables[0]["Symbol"].tolist()
 
     symbols = [s.replace(".", "-") for s in symbols]
     return symbols
@@ -197,7 +213,7 @@ def gspc_tickers() -> dict[str, Ticker]:
     tickers = {}
     for symbol in symbols:
         if symbol in data.columns.get_level_values(0):
-            df = data[symbol].dropna(how='all')
+            df = data[symbol].dropna(how="all")
             tickers[symbol] = Ticker(symbol, _from_bulk_download=True, raw_data=df)
 
     return tickers

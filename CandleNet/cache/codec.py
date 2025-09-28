@@ -5,7 +5,6 @@ import numpy as np
 import sys
 
 
-
 class Codec:
     @staticmethod
     def enc_arrow(df: pd.DataFrame) -> bytes:
@@ -13,10 +12,15 @@ class Codec:
             import pyarrow as pa
             import pyarrow.ipc as ipc
         except ImportError:
-            install = input("pyarrow is required for caching. Do you want to install it now? (y/n): ")
-            if install.lower() == 'y' or install.lower() == 'yes':
+            install = input(
+                "pyarrow is required for caching. Do you want to install it now? (y/n): "
+            )
+            if install.lower() == "y" or install.lower() == "yes":
                 import subprocess
-                subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pyarrow'])
+
+                subprocess.check_call(
+                    [sys.executable, "-m", "pip", "install", "pyarrow"]
+                )
                 import pyarrow as pa
                 import pyarrow.ipc as ipc
             else:
@@ -35,10 +39,15 @@ class Codec:
             import pyarrow as pa
             import pyarrow.ipc as ipc
         except ImportError:
-            install = input("pyarrow is required for caching. Do you want to install it now? (y/n): ")
+            install = input(
+                "pyarrow is required for caching. Do you want to install it now? (y/n): "
+            )
             if install.lower() in {"y", "yes"}:
                 import subprocess
-                subprocess.check_call([sys.executable, "-m", "pip", "install", "pyarrow"])
+
+                subprocess.check_call(
+                    [sys.executable, "-m", "pip", "install", "pyarrow"]
+                )
                 import pyarrow as pa
                 import pyarrow.ipc as ipc
             else:
@@ -68,5 +77,3 @@ class Codec:
         buffer = io.BytesIO(blob)
         buffer.seek(0)
         return np.load(buffer, allow_pickle=False)
-
-

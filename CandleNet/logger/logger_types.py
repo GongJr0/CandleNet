@@ -11,5 +11,3 @@ class LogType(Enum):
 class OriginType(Enum):
     SYSTEM = "SYSTEM"
     USER = "USER"
-
-

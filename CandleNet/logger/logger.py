@@ -56,7 +56,9 @@ def validate_log_schema(func):
         for a in args:
             if isinstance(a, dict):
                 return a
-        raise TypeError("validate_log_schema: couldn't locate `log` dict in args/kwargs")
+        raise TypeError(
+            "validate_log_schema: couldn't locate `log` dict in args/kwargs"
+        )
 
     def _is_iso8601(x):
         if isinstance(x, dt.datetime):
@@ -115,7 +117,9 @@ def validate_log_schema(func):
             raise ValueError("`type` must be LogType or a valid LogType name/value")
 
         if not _enum_ok(log["origin"], OriginType):
-            raise ValueError("`origin` must be OriginType or a valid OriginType name/value")
+            raise ValueError(
+                "`origin` must be OriginType or a valid OriginType name/value"
+            )
 
         if not isinstance(log["message"], str):
             raise ValueError("`message` must be a string")
@@ -126,15 +130,15 @@ def validate_log_schema(func):
 
 
 def get_log_dir() -> str:
-    if os.name == 'nt':  # Windows
-        local_app_data = os.getenv('LOCALAPPDATA')
+    if os.name == "nt":  # Windows
+        local_app_data = os.getenv("LOCALAPPDATA")
         if not local_app_data:
             local_app_data = str(Path.home() / "AppData" / "Local")
-        log_dir = os.path.join(local_app_data, 'CandleNet', 'logs')
+        log_dir = os.path.join(local_app_data, "CandleNet", "logs")
 
     else:  # Unix-like
-        home_dir = os.path.expanduser('~')
-        log_dir = os.path.join(home_dir, '.candlenet', 'logs')
+        home_dir = os.path.expanduser("~")
+        log_dir = os.path.join(home_dir, ".candlenet", "logs")
 
     os.makedirs(log_dir, exist_ok=True)
     return log_dir
@@ -151,7 +155,7 @@ class Logger:
             "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
             "type": None,
             "origin": None,
-            "message": None
+            "message": None,
         }
 
     @staticmethod
@@ -164,7 +168,6 @@ class Logger:
             logs.write(log + "\n")
         return
 
-
     def log(self, log_type: LogType, origin: OriginType, message: str) -> None:
         log_snip = self._get_stamped_schema()
         log_snip["type"] = log_type.name
@@ -174,7 +177,6 @@ class Logger:
         log_json = self._json_from_log(log=log_snip)
         self._log_append(log=log_json)
         return
-
 
     @property
     def LOG_DIR(self) -> str:

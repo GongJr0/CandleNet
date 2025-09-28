@@ -6,7 +6,7 @@ FRAME = Union[pd.DataFrame, np.ndarray]
 
 
 def matrix_minmax(matrix: FRAME, ignore_ones: bool = True) -> FRAME:
-    """ Min/Max rescale a matrix to [-1, 1] """
+    """Min/Max rescale a matrix to [-1, 1]"""
     mat_min, mat_max = None, None
     if ignore_ones:
         mask = np.triu(np.ones_like(matrix, dtype=np.bool))
@@ -18,17 +18,17 @@ def matrix_minmax(matrix: FRAME, ignore_ones: bool = True) -> FRAME:
         mat_min = np.min(matrix)
         mat_max = np.max(matrix)
 
-    return 2*((matrix - mat_min)/(mat_max-mat_min))-1
+    return 2 * ((matrix - mat_min) / (mat_max - mat_min)) - 1
 
 
 def upper_idx(n, k=1):
-    """ Return the upper triangular indices of an (n x n) array, excluding the diagonal and k-1 superdiagonals. """
+    """Return the upper triangular indices of an (n x n) array, excluding the diagonal and k-1 superdiagonals."""
     rows, cols = np.triu_indices(n, k=k)
     return rows, cols
 
 
 def signed_uniformize(C: FRAME):
-    """ Uniformize a correlation matrix while preserving the sign of the correlations. """
+    """Uniformize a correlation matrix while preserving the sign of the correlations."""
     C = pd.DataFrame(C)
     if isinstance(C, pd.DataFrame):
         A = C.to_numpy(dtype=float, copy=True)
@@ -40,7 +40,7 @@ def signed_uniformize(C: FRAME):
 
     # Fisher Transform
     eps = 1e-12
-    R = np.clip(A, -1+eps, 1-eps)
+    R = np.clip(A, -1 + eps, 1 - eps)
     Z = np.arctanh(R)
 
     # Magnitude
@@ -50,12 +50,12 @@ def signed_uniformize(C: FRAME):
     m_upper = M[idx]
     m_ut = m_upper[np.isfinite(m_upper)]
     xs = np.sort(m_ut)
-    ranks = np.searchsorted(xs, M[idx], side='right')
-    U = (ranks-0.5)/len(xs)
+    ranks = np.searchsorted(xs, M[idx], side="right")
+    U = (ranks - 0.5) / len(xs)
 
     # Sign Restoration
     S = np.zeros_like(A, dtype=float)
-    S[idx] = np.sign(R[idx])*U
+    S[idx] = np.sign(R[idx]) * U
     S = S + S.T
     np.fill_diagonal(S, 1.0)
 
@@ -63,7 +63,7 @@ def signed_uniformize(C: FRAME):
 
 
 def uptri_vals(A: FRAME) -> np.ndarray:
-    """ Return the upper triangular values of a square matrix, excluding the diagonal. """
+    """Return the upper triangular values of a square matrix, excluding the diagonal."""
     if isinstance(A, pd.DataFrame):
         A = A.to_numpy(dtype=float, copy=True)
     n = A.shape[0]

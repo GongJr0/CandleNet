@@ -14,25 +14,24 @@ class BaseCache(ABC):
         self._TTL = TTL
         self.con: sql.Connection | None = None
 
-
     def _init_table(self) -> None:
-        schema = ', '.join([f'{k} {v}' for k, v in self.TABLE_SCHEMA.items()])
-        query = f'CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} ({schema});'
+        schema = ", ".join([f"{k} {v}" for k, v in self.TABLE_SCHEMA.items()])
+        query = f"CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} ({schema});"
 
         # PRAGMA setup
-        wal_mode = 'PRAGMA journal_mode=WAL;'
-        sync = 'PRAGMA synchronous=NORMAL;'
-        temp_store = 'PRAGMA temp_store=MEMORY;'
-        cache_size = 'PRAGMA cache_size=-262144;'
-        mmap_size = 'PRAGMA mmap_size=268435456;'
-        checkpoint = 'PRAGMA wal_autocheckpoint=1000;'
+        wal_mode = "PRAGMA journal_mode=WAL;"
+        sync = "PRAGMA synchronous=NORMAL;"
+        temp_store = "PRAGMA temp_store=MEMORY;"
+        cache_size = "PRAGMA cache_size=-262144;"
+        mmap_size = "PRAGMA mmap_size=268435456;"
+        checkpoint = "PRAGMA wal_autocheckpoint=1000;"
 
         with sql.connect(self.DB_PATH, isolation_level=None) as conn:
             cursor = conn.cursor()
             # Check if table already exists
             cursor.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name=?;",
-                (self.TABLE_NAME,)
+                (self.TABLE_NAME,),
             )
             table_exists = cursor.fetchone() is not None
             if table_exists:
@@ -63,7 +62,6 @@ class BaseCache(ABC):
     def clear(self) -> None:
         pass
 
-
     def _log(self, log_type: LogType, origin: OriginType, message: str) -> None:
         self.logger.log(log_type, origin, message)
 
@@ -89,7 +87,6 @@ class BaseCache(ABC):
     def TABLE_NAME(self) -> str:
         pass
 
-    
     @property
     def TTL(self) -> int:
         """Time to live in seconds"""
@@ -98,25 +95,34 @@ class BaseCache(ABC):
     @property
     def DB_PATH(self) -> str:
         if os.name == "nt":
-            base_dir = Path(os.getenv('LOCALAPPDATA', Path.home() / 'AppData' / 'Local')) / 'CandleNet'
-            return str(base_dir.joinpath('cache.db'))  # .as_posix() reformats backslashes,
-                                                       # not used to ensure compatibility.
+            base_dir = (
+                Path(os.getenv("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+                / "CandleNet"
+            )
+            return str(
+                base_dir.joinpath("cache.db")
+            )  # .as_posix() reformats backslashes,
+            # not used to ensure compatibility.
 
         else:
-            base_dir = Path(Path.home() / '.local' / 'share' / 'CandleNet')
+            base_dir = Path(Path.home() / ".local" / "share" / "CandleNet")
 
         if not base_dir.exists():
             os.makedirs(base_dir, exist_ok=True)
-        return base_dir.joinpath('cache.db').as_posix()
+        return base_dir.joinpath("cache.db").as_posix()
 
     def check_con(self) -> sql.Connection:
         if self.con is None:
-            raise RuntimeError('Establish cache connection through context manager before performing operations.')
+            raise RuntimeError(
+                "Establish cache connection through context manager before performing operations."
+            )
         return self.con
 
     def __enter__(self) -> Self:
         self.con = sql.connect(self.DB_PATH, isolation_level=None)
-        assert self.con is not None, "__enter__ failed to establish database connection."
+        assert (
+            self.con is not None
+        ), "__enter__ failed to establish database connection."
         self._init_table()
 
         return self

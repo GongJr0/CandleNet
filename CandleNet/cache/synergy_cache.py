@@ -10,19 +10,19 @@ from enum import Enum
 
 
 class CorrType(Enum):
-    RETURN = 'RETURN'
-    VOLUME = 'VOLUME'
-    VOLATILITY = 'VOLATILITY'
+    RETURN = "RETURN"
+    VOLUME = "VOLUME"
+    VOLATILITY = "VOLATILITY"
 
 
 class YfCache(BaseCache):
     def __init__(self):
-        super().__init__(86400*7)  # 7 days TTL
+        super().__init__(86400 * 7)  # 7 days TTL
 
     def insert(self, data: pd.DataFrame) -> None:
         con = self.check_con()
 
-        tickers = ','.join(sorted(data.columns.get_level_values(1).unique()))
+        tickers = ",".join(sorted(data.columns.get_level_values(1).unique()))
         encoded_data = Codec.enc_arrow(data)
         created_at = self.ts_now_iso()
         ttl_epoch = self.ts_now_epoch() + self.TTL
@@ -35,8 +35,8 @@ class YfCache(BaseCache):
     def fetch(self, tickers: Sequence[str]) -> Optional[pd.DataFrame]:
         con = self.check_con()
 
-        tickers = ','.join(sorted(tickers))
-        query = f'''SELECT data, ttl_epoch FROM {self.TABLE_NAME} WHERE tickers = ?;'''
+        tickers = ",".join(sorted(tickers))
+        query = f"""SELECT data, ttl_epoch FROM {self.TABLE_NAME} WHERE tickers = ?;"""
         cursor = con.execute(query, (tickers,))
         resp = cursor.fetchone()
         if resp is None:
@@ -52,32 +52,32 @@ class YfCache(BaseCache):
     def delete(self, tickers: str) -> None:
         con = self.check_con()
 
-        query = f'''DELETE FROM {self.TABLE_NAME} WHERE tickers = ?;'''
+        query = f"""DELETE FROM {self.TABLE_NAME} WHERE tickers = ?;"""
         con.execute(query, (tickers,))
 
     def clear(self) -> None:
         con = self.check_con()
 
-        query = f'''DELETE FROM {self.TABLE_NAME};'''
+        query = f"""DELETE FROM {self.TABLE_NAME};"""
         con.execute(query)
 
     @property
     def TABLE_NAME(self) -> str:
-        return 'yf_cache'
+        return "yf_cache"
 
     @property
     def TABLE_SCHEMA(self) -> dict:
         return {
-            'tickers': 'TEXT PRIMARY KEY',
-            'data': 'BLOB NOT NULL',
-            'created_at': 'TEXT NOT NULL',
-            'ttl_epoch': 'INTEGER NOT NULL'
+            "tickers": "TEXT PRIMARY KEY",
+            "data": "BLOB NOT NULL",
+            "created_at": "TEXT NOT NULL",
+            "ttl_epoch": "INTEGER NOT NULL",
         }
 
 
 class CorrCache(BaseCache):
     def __init__(self):
-        super().__init__(86400*7)  # 7 days TTL
+        super().__init__(86400 * 7)  # 7 days TTL
 
     def insert(self, data: pd.DataFrame, corr_type: CorrType) -> None:
         con = self.check_con()
@@ -88,14 +88,17 @@ class CorrCache(BaseCache):
         ttl_epoch = self.ts_now_epoch() + self.TTL
         query = f"""INSERT OR REPLACE INTO {self.TABLE_NAME} (sectors_id, corr_type, data, created_at, ttl_epoch)
                     VALUES (?, ?, ?, ?, ?);"""
-        con.execute(query, (sectors_id, corr_type.value, encoded_data, created_at, ttl_epoch))
+        con.execute(
+            query, (sectors_id, corr_type.value, encoded_data, created_at, ttl_epoch)
+        )
 
-
-    def fetch(self, sectors: Sequence[str], corr_type: CorrType) -> Optional[pd.DataFrame]:
+    def fetch(
+        self, sectors: Sequence[str], corr_type: CorrType
+    ) -> Optional[pd.DataFrame]:
         con = self.check_con()
 
         sectors_id = f"[{corr_type.name}] - [{','.join(sorted(sectors))}]"
-        query = f'''SELECT data, ttl_epoch FROM {self.TABLE_NAME} WHERE sectors_id = ? AND corr_type = ?;'''
+        query = f"""SELECT data, ttl_epoch FROM {self.TABLE_NAME} WHERE sectors_id = ? AND corr_type = ?;"""
         cursor = con.execute(query, (sectors_id, corr_type.value))
         resp = cursor.fetchone()
         if resp is None:
@@ -110,40 +113,37 @@ class CorrCache(BaseCache):
 
     def delete(self, sectors: str) -> None:
         con = self.check_con()
-        
 
-        query = f'''DELETE FROM {self.TABLE_NAME} WHERE sectors = ?;'''
+        query = f"""DELETE FROM {self.TABLE_NAME} WHERE sectors = ?;"""
         con.execute(query, (sectors,))
 
     def clear(self) -> None:
         con = self.check_con()
 
-        query = f'''DELETE FROM {self.TABLE_NAME};'''
+        query = f"""DELETE FROM {self.TABLE_NAME};"""
         con.execute(query)
-
 
     @property
     def TABLE_NAME(self) -> str:
-        return 'corr_cache'
+        return "corr_cache"
 
     @property
     def TABLE_SCHEMA(self) -> dict:
         return {
-            'sectors_id': 'TEXT PRIMARY KEY',
-            'corr_type': 'TEXT NOT NULL',
-            'data': 'BLOB NOT NULL',
-            'created_at': 'TEXT NOT NULL',
-            'ttl_epoch': 'INTEGER NOT NULL'
+            "sectors_id": "TEXT PRIMARY KEY",
+            "corr_type": "TEXT NOT NULL",
+            "data": "BLOB NOT NULL",
+            "created_at": "TEXT NOT NULL",
+            "ttl_epoch": "INTEGER NOT NULL",
         }
 
 
 class McapCache(BaseCache):
     def __init__(self) -> None:
-        super().__init__(8400*7)  # 7 days
+        super().__init__(8400 * 7)  # 7 days
 
-    def insert(self, ticker:str, mcap: int | float) -> None:
+    def insert(self, ticker: str, mcap: int | float) -> None:
         con = self.check_con()
-        
 
         created_at = self.ts_now_iso()
         ttl_epoch = self.ts_now_epoch() + self.TTL
@@ -155,9 +155,8 @@ class McapCache(BaseCache):
         cur.execute(query, params)
         return
 
-    def fetch(self, ticker:str) -> float | None:
+    def fetch(self, ticker: str) -> float | None:
         con = self.check_con()
-        
 
         query = f"""SELECT mcap, ttl_epoch FROM {self.TABLE_NAME} WHERE ticker = ?;"""
         params = (ticker,)
@@ -174,9 +173,8 @@ class McapCache(BaseCache):
 
         return resp[0]
 
-    def delete(self, ticker:str) -> None:
+    def delete(self, ticker: str) -> None:
         con = self.check_con()
-        
 
         query = f"""DELETE FROM {self.TABLE_NAME} WHERE ticker = ?;"""
         params = (ticker,)
@@ -187,13 +185,12 @@ class McapCache(BaseCache):
 
     def clear(self) -> None:
         con = self.check_con()
-        
+
         query = f"""DELETE FROM {self.TABLE_NAME};"""
 
         cur = con.cursor()
         cur.execute(query)
         return
-
 
     @property
     def TABLE_NAME(self) -> str:
@@ -202,8 +199,8 @@ class McapCache(BaseCache):
     @property
     def TABLE_SCHEMA(self) -> dict[str, str]:
         return {
-            'ticker': "TEXT PRIMARY KEY",
+            "ticker": "TEXT PRIMARY KEY",
             "mcap": "REAL NOT NULL",
             "created_at": "TEXT NOT NULL",
-            "ttl_epoch": "INTEGER NOT NULL"
+            "ttl_epoch": "INTEGER NOT NULL",
         }

@@ -19,7 +19,7 @@ class TickerCodec:
         array = Codec.dec_numpy(blob)
         return pd.Series(
             data=array[:, 1],
-            index=pd.to_datetime(array[:, 0], unit='ns'),
+            index=pd.to_datetime(array[:, 0], unit="ns"),
             name=name,
         )
 
@@ -36,7 +36,7 @@ class TickerCodec:
         array = Codec.dec_numpy(blob)
         return pd.DataFrame(
             data=array[:, 1:3],
-            index=pd.to_datetime(array[:, 0], unit='ns'),
+            index=pd.to_datetime(array[:, 0], unit="ns"),
             columns=["high", "low"],
         )
 
@@ -60,22 +60,25 @@ class TickerCodec:
             arr = np.column_stack([t, data.to_numpy()])
             return Codec.enc_numpy(arr)
         else:
-            raise TypeError("enc_pandas expects a pandas Series or a 2-column DataFrame")
-
+            raise TypeError(
+                "enc_pandas expects a pandas Series or a 2-column DataFrame"
+            )
 
 
 class TickerCache(BaseCache):
     def __init__(self) -> None:
 
-        super().__init__(TTL=86400*7)
-        self._table_name = 'tickers'
+        super().__init__(TTL=86400 * 7)
+        self._table_name = "tickers"
 
-    def insert(self,
-               ticker: str,
-               price: pd.Series,
-               volume: pd.Series,
-               hilo: pd.DataFrame,
-               sentiment: Optional[float] = None) -> None:
+    def insert(
+        self,
+        ticker: str,
+        price: pd.Series,
+        volume: pd.Series,
+        hilo: pd.DataFrame,
+        sentiment: Optional[float] = None,
+    ) -> None:
 
         con = self.check_con()
 
@@ -87,26 +90,34 @@ class TickerCache(BaseCache):
         query = f"""INSERT OR REPLACE INTO {self._table_name} (ticker, price, volume, hilo, sentiment, created_at, ttl_epoch)
                     VALUES (?, ?, ?, ?, ?, ?, ?);"""
 
-        con.execute(query, (ticker, price_enc, volume_enc, hilo_enc, sentiment, self.ts_now_iso(), ttl_epoch))
+        con.execute(
+            query,
+            (
+                ticker,
+                price_enc,
+                volume_enc,
+                hilo_enc,
+                sentiment,
+                self.ts_now_iso(),
+                ttl_epoch,
+            ),
+        )
         self._log(
             LogType.EVENT,
             OriginType.USER,
-            f"Inserted ticker data for {ticker} into cache."
+            f"Inserted ticker data for {ticker} into cache.",
         )
         return
 
     def fetch(self, ticker) -> TickerData | None:
         con = self.check_con()
-        query = f'SELECT * FROM {self._table_name} WHERE ticker = ?;'
+        query = f"SELECT * FROM {self._table_name} WHERE ticker = ?;"
         cur = con.cursor()
         cur.execute(query, (ticker,))
 
-
         if (resp := cur.fetchone()) is None:
             self._log(
-                LogType.EVENT,
-                OriginType.SYSTEM,
-                f"Cache miss for ticker {ticker}."
+                LogType.EVENT, OriginType.SYSTEM, f"Cache miss for ticker {ticker}."
             )
             return None
         else:
@@ -115,14 +126,12 @@ class TickerCache(BaseCache):
                 self._log(
                     LogType.EVENT,
                     OriginType.SYSTEM,
-                    f"Expired hit for ticker {ticker}."
+                    f"Expired hit for ticker {ticker}.",
                 )
                 return None
 
             self._log(
-                LogType.EVENT,
-                OriginType.SYSTEM,
-                f"Cache hit for ticker {ticker}."
+                LogType.EVENT, OriginType.SYSTEM, f"Cache hit for ticker {ticker}."
             )
 
             return TickerData(
@@ -130,60 +139,54 @@ class TickerCache(BaseCache):
                 price=TickerCodec.dec_price(resp[1]),
                 volume=TickerCodec.dec_volume(resp[2]),
                 hilo=TickerCodec.dec_hilo(resp[3]),
-                sentiment=resp[4]
+                sentiment=resp[4],
             )
 
     def delete(self, ticker: str) -> None:
         con = self.check_con()
-        query = f'DELETE FROM {self._table_name} WHERE ticker = ?;'
+        query = f"DELETE FROM {self._table_name} WHERE ticker = ?;"
         con.execute(query, (ticker,))
         self._log(
             LogType.EVENT,
             OriginType.SYSTEM,
-            f"Deleted ticker data for {ticker} from cache."
+            f"Deleted ticker data for {ticker} from cache.",
         )
         return
 
     def clear(self) -> None:
         con = self.check_con()
-        query = f'DELETE FROM {self._table_name};'
+        query = f"DELETE FROM {self._table_name};"
         con.execute(query)
         self._log(
             LogType.EVENT,
             OriginType.USER,
-            f"Cleared all data from cache table {self._table_name}."
+            f"Cleared all data from cache table {self._table_name}.",
         )
         return
 
     @property
     def TABLE_SCHEMA(self) -> dict:
         return {
-            'ticker': 'TEXT PRIMARY KEY',
-            'price': 'BLOB NOT NULL',
-            'volume': 'BLOB NOT NULL',
-            'hilo': 'BLOB NOT NULL',
-            'sentiment': 'REAL',
-            'created_at': 'TEXT NOT NULL',
-            'ttl_epoch': f'INTEGER NOT NULL',
+            "ticker": "TEXT PRIMARY KEY",
+            "price": "BLOB NOT NULL",
+            "volume": "BLOB NOT NULL",
+            "hilo": "BLOB NOT NULL",
+            "sentiment": "REAL",
+            "created_at": "TEXT NOT NULL",
+            "ttl_epoch": f"INTEGER NOT NULL",
         }
-    
+
     @property
     def TABLE_NAME(self) -> str:
         return self._table_name
-    
+
     def __getitem__(self, ticker: str) -> TickerData | None:
         return self.fetch(ticker)
 
     def __setitem__(self, ticker: str, value: dict) -> None:
-        price: pd.Series = value['price']
-        volume: pd.Series = value['volume']
-        hilo: pd.DataFrame = value['hilo']
-        sentiment: Optional[float] = value['sentiment']
+        price: pd.Series = value["price"]
+        volume: pd.Series = value["volume"]
+        hilo: pd.DataFrame = value["hilo"]
+        sentiment: Optional[float] = value["sentiment"]
 
-        self.insert(
-            ticker,
-            price,
-            volume,
-            hilo,
-            sentiment
-        )
+        self.insert(ticker, price, volume, hilo, sentiment)
