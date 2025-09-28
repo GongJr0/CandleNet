@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from typing import Union
 
-FRAME = Union[pd.DataFrame, np.ndarray]
+FRAME = Union[pd.DataFrame, np.ndarray, pd.Series]
 
 
 def matrix_minmax(matrix: FRAME, ignore_ones: bool = True) -> FRAME:

@@ -1,0 +1,25 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3.13
+        files: ^CandleNet/.*\.py$
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.18.2
+    hooks:
+      - id: mypy
+        language_version: python3.13
+        additional_dependencies: [pandas-stubs, types-requests, pyarrow-stubs, types-html5lib, lxml-stubs, scipy-stubs, types-seaborn]
+        files: ^CandleNet/.*\.py$
+        # If you use pyproject.toml for mypy config, no args needed.
+        # Otherwise you can add args, but DO NOT pass paths here.
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: bash -c "PYTHONPATH=. python -m pytest ./tests/"
+        language: system
+        pass_filenames: false

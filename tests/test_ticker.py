@@ -14,12 +14,9 @@ def test_ticker(i, ticker):
     assert isinstance(ticker.volume, pd.Series)
     assert isinstance(ticker.hilo, pd.DataFrame)
 
-    if sentiment := ticker.data['sentiment']:
+    if sentiment := ticker.data["sentiment"]:
         assert -1.0 <= sentiment <= 1.0
     else:
         warnings.warn(f"Empty sentiment for {ticker.symbol}")
 
-
     assert len(ticker.price) == len(ticker.volume) == len(ticker.hilo)
-
-

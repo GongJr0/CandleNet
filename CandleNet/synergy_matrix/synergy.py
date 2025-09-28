@@ -6,6 +6,7 @@ from io import StringIO
 import yfinance as yf  # type: ignore[import-untyped]
 from CandleNet.cache.synergy_cache import CorrType, YfCache, CorrCache, McapCache
 import matplotlib.pyplot as plt
+import seaborn as sns
 from CandleNet.utils import (
     matrix_minmax,
     uptri_vals,
@@ -345,34 +346,49 @@ class Synergy:
         return s[~diag.astype(bool)].mean()
 
     def synergy_describe(self) -> dict[str, FRAME]:
-        s = self.sector_synergy()
+        s = self.signed_synergy()
+        eye = np.eye(s.shape[0]).astype(bool)
+        s[eye] = np.nan
+
+        sec = self.sector_synergy()
         base_desc = s.describe()
 
-        sectors: pd.Series = s.mean()
-
-        top_3 = sectors.nlargest(3)
-        bottom_3 = sectors.nsmallest(3)
+        top_3 = sec.nlargest(3)
+        bottom_3 = sec.nsmallest(3)
 
         # Per Sector Quartiles
-        qdf = pd.DataFrame(index=s.index)
-
-        qdf['Q1'] = s.apply(lambda x: pd.Series(x).quantile(0.25), axis=0)
-        qdf['M'] = s.apply(lambda x: pd.Series(x).quantile(0.50), axis=0)
-        qdf['Q3'] = s.apply(lambda x: pd.Series(x).quantile(0.75), axis=0)
-        qdf['IQR'] = qdf['Q3'] - qdf['Q1']
+        index = []
+        data: dict[str, list] = {
+            "MIN": [],
+            "Q1": [],
+            "MEDIAN": [],
+            "Q3": [],
+            "MAX": [],
+        }
+        for st in s.index:
+            index.append(st)
+            data["MIN"].append(s[st].min())
+            data["Q1"].append(s[st].quantile(0.25))
+            data["MEDIAN"].append(s[st].median())
+            data["Q3"].append(s[st].quantile(0.75))
+            data["MAX"].append(s[st].max())
+        qdf = pd.DataFrame(data, index=index)
 
         return {
             "describe": base_desc,
-            "sectors_mean": sectors,
+            "sectors_mean": sec,
             "top_3": top_3,
             "bottom_3": bottom_3,
-            "quartiles": qdf
+            "quartiles": qdf,
         }
 
-
-
-
-
+    def synergy_heatmap(self) -> None:
+        s = self.signed_synergy()
+        plt.figure(figsize=(10, 8))
+        sns.heatmap(s, annot=True, fmt=".2f", cmap="coolwarm", square=True)
+        plt.title("Sector Synergy Heatmap")
+        plt.tight_layout()
+        plt.show(block=False)
 
     @staticmethod
     def plot_triu_hist(

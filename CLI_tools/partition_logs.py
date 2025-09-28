@@ -25,15 +25,15 @@ def _safe_filename(name: str) -> str:
 
 
 def get_log_dir() -> str:
-    if os.name == 'nt':  # Windows
-        local_app_data = os.getenv('LOCALAPPDATA')
+    if os.name == "nt":  # Windows
+        local_app_data = os.getenv("LOCALAPPDATA")
         if not local_app_data:
             local_app_data = str(Path.home() / "AppData" / "Local")
-        log_dir = os.path.join(local_app_data, 'CandleNet', 'logs')
+        log_dir = os.path.join(local_app_data, "CandleNet", "logs")
 
     else:  # Unix-like
-        home_dir = os.path.expanduser('~')
-        log_dir = os.path.join(home_dir, '.candlenet', 'logs')
+        home_dir = os.path.expanduser("~")
+        log_dir = os.path.join(home_dir, ".candlenet", "logs")
 
     os.makedirs(log_dir, exist_ok=True)
     return log_dir
@@ -73,7 +73,9 @@ class LogSplitter:
                     case "year":
                         key = str(timestamp.year)
                     case _:
-                        raise ValueError("Invalid bin size. Choose from 'day', 'week', 'month', 'year'.")
+                        raise ValueError(
+                            "Invalid bin size. Choose from 'day', 'week', 'month', 'year'."
+                        )
                 if key not in partitions:
                     partitions[key] = []
 
@@ -154,17 +156,25 @@ class LogSplitter:
 
 
 def print_usage():
-    usage = "partition_logs.py --by_date [day|week|month|year] | --by_type | --by_origin"
+    usage = (
+        "partition_logs.py --by_date [day|week|month|year] | --by_type | --by_origin"
+    )
     print(usage)
 
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
     group = arg_parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--by_date", type=str, choices=["day", "week", "month", "year"],
-                       help="Specify date bin size for partitioning.")
+    group.add_argument(
+        "--by_date",
+        type=str,
+        choices=["day", "week", "month", "year"],
+        help="Specify date bin size for partitioning.",
+    )
     group.add_argument("--by_type", action="store_true", help="Partition logs by type.")
-    group.add_argument("--by_origin", action="store_true", help="Partition logs by origin.")
+    group.add_argument(
+        "--by_origin", action="store_true", help="Partition logs by origin."
+    )
     args = arg_parser.parse_args()
 
     splitter = LogSplitter()
@@ -175,4 +185,3 @@ if __name__ == "__main__":
         splitter.by_type()
     elif args.by_origin:
         splitter.by_origin()
-    

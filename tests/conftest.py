@@ -12,9 +12,9 @@ import json
 
 @fixture(scope="function")
 def msg():
-    charset = string.ascii_letters + string.digits + string.punctuation + ' '
+    charset = string.ascii_letters + string.digits + string.punctuation + " "
     length = random.randint(20, 140)
-    return ''.join(random.choices(charset, k=length))
+    return "".join(random.choices(charset, k=length))
 
 
 @fixture
@@ -24,7 +24,9 @@ def origin():
 
 @fixture
 def log_type():
-    return random.choice([LogType.EVENT, LogType.WARNING, LogType.ERROR, LogType.STATUS])
+    return random.choice(
+        [LogType.EVENT, LogType.WARNING, LogType.ERROR, LogType.STATUS]
+    )
 
 
 @fixture(scope="session")
@@ -61,4 +63,3 @@ def _gspc_to_txt():
 
     with open("./data/gspc.txt", "w") as f:
         f.write("\n".join(ticker_list))
-
