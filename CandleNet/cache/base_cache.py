@@ -15,8 +15,12 @@ class BaseCache(ABC):
         self.con: sql.Connection | None = None
 
     def _init_table(self) -> None:
-        schema = ", ".join([f"{k} {v}" for k, v in self.TABLE_SCHEMA.items()])
-        query = f"CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} ({schema});"
+        schema = [f"{col} {dtype}" for col, dtype in self.TABLE_SCHEMA.items()]
+        constraint = self.TABLE_CONSTRAINTS
+
+        constructor = ", ".join(schema + constraint)
+
+        query = f"CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} ({constructor});"
 
         # PRAGMA setup
         wal_mode = "PRAGMA journal_mode=WAL;"
@@ -86,6 +90,11 @@ class BaseCache(ABC):
     @abstractmethod
     def TABLE_NAME(self) -> str:
         pass
+
+    @property
+    def TABLE_CONSTRAINTS(self) -> list[str]:
+        """List of SQL constraints to be applied to the table."""
+        return []
 
     @property
     def TTL(self) -> int:

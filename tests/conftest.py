@@ -4,10 +4,11 @@ from CandleNet import gspc_from_cache
 from CandleNet.cache.ticker_cache import TickerCache
 from CandleNet.ticker.ticker import Ticker
 from CandleNet.synergy_matrix import Synergy
+import numpy as np
 import random
 import string
 import os
-import json
+
 
 
 @fixture(scope="function")
@@ -48,6 +49,19 @@ def ticker(sp500_symbols):
 @fixture
 def s():
     return Synergy()
+
+
+@fixture
+def arr():
+    mag = random.randint(1, 6)
+    size = random.randint(100, 200)
+    return np.random.randn(size, 1) * (10**mag)
+
+@fixture
+def ndarray():
+    mag = random.randint(1, 6)
+    size = random.randint(100, 200)
+    return np.random.randn(size, size) * (10**mag)
 
 
 # Optional seed for reproducibility
