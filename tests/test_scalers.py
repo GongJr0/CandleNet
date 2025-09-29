@@ -3,13 +3,18 @@ from sklearn.preprocessing import StandardScaler as SKStandard, RobustScaler as 
 from CandleNet.scalers import P2Scaler, RobustScaler as CNRobust, StandardScaler as CNStandard, MinMaxScaler as CNMinMax
 import numpy as np
 
+z_cutoff = 3.720  # \approx cumulative p=0.9999 for std normal dist (No IQR correction due to small sample size)
+
 
 @pytest.mark.parametrize("i", range(100))
 def test_p2_1d(i, arr):
     scaler = P2Scaler(arr, f"test_p2_1d - {np.random.randint(0, 1e12)}")
     scaled = scaler.fit_transform()
+    n = arr.shape[0]
+    n_cutoff = np.where(np.abs(scaled) < z_cutoff, True, False).sum()
+
     assert scaled.shape == arr.shape
-    assert np.isclose(np.mean(scaled), 0, atol=3e-1)  # tol=0.3 due to small sample size
+    assert n_cutoff/n >= 0.9999
 
 
 @pytest.mark.parametrize("i", range(100))
@@ -17,7 +22,7 @@ def test_p2_nd(i, ndarray):
     scaler = P2Scaler(ndarray, f"test_p2_nd - {np.random.randint(0, 1e12)}")
     scaled = scaler.fit_transform()
     assert scaled.shape == ndarray.shape
-    assert np.all(np.isclose(np.mean(scaled, axis=0), 0, atol=3e-1))  # tol=0.3 due to small sample size
+    assert np.all(np.abs(scaled) <= z_cutoff)
 
 
 @pytest.mark.parametrize("i", range(100))
@@ -34,19 +39,17 @@ def test_robust_nd(i, ndarray):
     assert np.allclose(scaled, ndarray, atol=1e-6)
 
 
-@pytest.mark.skip(reason="Sklearn uses ddof=0, CandleNet uses ddof=1")
 @pytest.mark.parametrize("i", range(100))
 def test_standard_1d(i, arr):
     scaled = SKStandard().fit_transform(arr)
-    arr = CNStandard.fit_transform(arr)
+    arr = CNStandard.fit_transform(arr, ddof=0)
     assert np.allclose(scaled, arr, atol=1e-6)
 
 
-@pytest.mark.skip(reason="Sklearn uses ddof=0, CandleNet uses ddof=1")
 @pytest.mark.parametrize("i", range(100))
 def test_standard_nd(i, ndarray):
     scaled = SKStandard().fit_transform(ndarray)
-    ndarray = CNStandard.fit_transform(ndarray)
+    ndarray = CNStandard.fit_transform(ndarray, ddof=0)
     assert np.allclose(scaled, ndarray, atol=1e-6)
 
 

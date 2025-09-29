@@ -54,13 +54,14 @@ def s():
 @fixture
 def arr():
     mag = random.randint(1, 6)
-    size = random.randint(100, 200)
+    size = random.randint(50, 100)
+    size = size**2  # len(arr) == len(ndarray) with same rng
     return np.random.randn(size, 1) * (10**mag)
 
 @fixture
 def ndarray():
     mag = random.randint(1, 6)
-    size = random.randint(100, 200)
+    size = random.randint(50, 100)
     return np.random.randn(size, size) * (10**mag)
 
 

@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
-from typing import Union
+from typing import Union, Callable, Any
+from functools import reduce
 
 FRAME = Union[pd.DataFrame, np.ndarray, pd.Series]
+SERIES = Union[pd.Series, np.ndarray]
 
 
 def matrix_minmax(matrix: FRAME, ignore_ones: bool = True) -> FRAME:
@@ -81,3 +83,8 @@ def uptri_abs_var(S):
 def matrix_describe(A: FRAME) -> pd.Series:
     values = uptri_vals(A)
     return pd.Series(values).describe()
+
+
+def pipe(*funcs) -> Callable[[Any], Any]:
+    """Compose multiple single-argument functions into a single callable."""
+    return lambda x: reduce(lambda x, f: f(x), funcs, x)
