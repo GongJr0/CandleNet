@@ -4,6 +4,7 @@ import pytest
 
 
 @pytest.mark.slow
+@pytest.mark.web_access
 def test_synergy(s: Synergy):
     mat = s.signed_synergy()
     vals = mat.dropna().values.flatten()

@@ -66,9 +66,14 @@ def ndarray():
 
 
 # Optional seed for reproducibility
-@fixture(scope="session", autouse=False)
+@fixture(scope="session", autouse=True)
 def _seed_random():
     random.seed(0)
+
+
+@fixture(scope="session", autouse=True)
+def _seed_numpy():
+    np.random.seed(0)
 
 
 @fixture(scope="session", autouse=False)

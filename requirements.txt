@@ -11,3 +11,4 @@ transformers==4.56.2
 yfinance==0.2.66
 pytest==8.4.2
 statsmodels==0.14.5
+scikit-learn==1.7.2
