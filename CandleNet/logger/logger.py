@@ -36,7 +36,7 @@ import datetime as dt
 from functools import wraps
 from enum import Enum
 
-from .logger_types import LogType, OriginType
+from .logger_types import LogType, OriginType, CallerType
 
 
 def validate_log_schema(func):
@@ -47,7 +47,7 @@ def validate_log_schema(func):
     - origin: logger_types.OriginType or its name as string
     - message: non-empty string
     """
-    REQUIRED_KEYS = {"timestamp", "type", "origin", "message"}
+    REQUIRED_KEYS = {"timestamp", "type", "origin", "caller", "message"}
 
     def _extract_log(args, kwargs):
         # Handles staticmethod: (log), instance method: (self, log), or kw: log=...
@@ -121,6 +121,11 @@ def validate_log_schema(func):
                 "`origin` must be OriginType or a valid OriginType name/value"
             )
 
+        if not _enum_ok(log["caller"], CallerType):
+            raise ValueError(
+                "`caller` must be CallerType or a valid CallerModule name/value"
+            )
+
         if not isinstance(log["message"], str):
             raise ValueError("`message` must be a string")
 
@@ -130,6 +135,7 @@ def validate_log_schema(func):
 
 
 def get_log_dir() -> str:
+    log_dir = "./"  # default fallback
     if os.name == "nt":  # Windows
         local_app_data = os.getenv("LOCALAPPDATA")
         if not local_app_data:
@@ -145,9 +151,9 @@ def get_log_dir() -> str:
 
 
 class Logger:
-    def __init__(self):
-        self._log_dir = None
-        ...
+    def __init__(self, test: bool = False):
+        self._log_dir: str | None = None
+        self.test = test
 
     @staticmethod
     def _get_stamped_schema():
@@ -155,6 +161,7 @@ class Logger:
             "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
             "type": None,
             "origin": None,
+            "caller": None,
             "message": None,
         }
 
@@ -168,10 +175,13 @@ class Logger:
             logs.write(log + "\n")
         return
 
-    def log(self, log_type: LogType, origin: OriginType, message: str) -> None:
+    def log(
+        self, log_type: LogType, origin: OriginType, caller: CallerType, message: str
+    ) -> None:
         log_snip = self._get_stamped_schema()
         log_snip["type"] = log_type.name
         log_snip["origin"] = origin.name
+        log_snip["caller"] = caller.name
         log_snip["message"] = message
 
         log_json = self._json_from_log(log=log_snip)
@@ -188,8 +198,9 @@ class Logger:
 
     @property
     def LOG_FILE(self) -> str:
+        name = "candlenet_logs_test.jsonl" if self.test else "candlenet_logs.jsonl"
         log_dir = self.LOG_DIR
-        log_file = os.path.join(log_dir, "candlenet_logs.jsonl")
+        log_file = os.path.join(log_dir, name)
         if not os.path.exists(log_file):
             with open(log_file, "w", encoding="utf-8") as f:
                 f.write("")  # create empty file

@@ -4,7 +4,7 @@ from pathlib import Path
 import datetime as dt
 import sqlite3 as sql
 from ..logger import Logger
-from ..logger import LogType, OriginType
+from ..logger import LogType, OriginType, CallerType
 from typing import Any, Self
 
 
@@ -66,8 +66,10 @@ class BaseCache(ABC):
     def clear(self) -> None:
         pass
 
-    def _log(self, log_type: LogType, origin: OriginType, message: str) -> None:
-        self.logger.log(log_type, origin, message)
+    def _log(
+        self, log_type: LogType, origin: OriginType, caller: CallerType, message: str
+    ) -> None:
+        self.logger.log(log_type, origin, caller, message)
 
     @staticmethod
     def ts_now_iso() -> str:

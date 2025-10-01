@@ -4,8 +4,8 @@ import numpy as np
 import pickle
 from typing import Optional, Union
 from . import BaseCache
-from ..logger import LogType, OriginType
 from .codec import Codec
+from ..logger import LogType, OriginType, CallerType
 from ..ticker.ticker_data import TickerData
 
 
@@ -105,6 +105,7 @@ class TickerCache(BaseCache):
         self._log(
             LogType.EVENT,
             OriginType.USER,
+            CallerType.CACHE,
             f"Inserted ticker data for {ticker} into cache.",
         )
         return
@@ -117,7 +118,10 @@ class TickerCache(BaseCache):
 
         if (resp := cur.fetchone()) is None:
             self._log(
-                LogType.EVENT, OriginType.SYSTEM, f"Cache miss for ticker {ticker}."
+                LogType.EVENT,
+                OriginType.SYSTEM,
+                CallerType.CACHE,
+                f"Cache miss for ticker {ticker}.",
             )
             return None
         else:
@@ -126,12 +130,16 @@ class TickerCache(BaseCache):
                 self._log(
                     LogType.EVENT,
                     OriginType.SYSTEM,
+                    CallerType.CACHE,
                     f"Expired hit for ticker {ticker}.",
                 )
                 return None
 
             self._log(
-                LogType.EVENT, OriginType.SYSTEM, f"Cache hit for ticker {ticker}."
+                LogType.EVENT,
+                OriginType.SYSTEM,
+                CallerType.CACHE,
+                f"Cache hit for ticker {ticker}.",
             )
 
             return TickerData(
@@ -149,6 +157,7 @@ class TickerCache(BaseCache):
         self._log(
             LogType.EVENT,
             OriginType.SYSTEM,
+            CallerType.CACHE,
             f"Deleted ticker data for {ticker} from cache.",
         )
         return
@@ -160,6 +169,7 @@ class TickerCache(BaseCache):
         self._log(
             LogType.EVENT,
             OriginType.USER,
+            CallerType.CACHE,
             f"Cleared all data from cache table {self._table_name}.",
         )
         return

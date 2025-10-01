@@ -11,3 +11,13 @@ class LogType(Enum):
 class OriginType(Enum):
     SYSTEM = "SYSTEM"
     USER = "USER"
+
+
+class CallerType(Enum):
+    AUTOREG = "AUTOREG"
+    CACHE = "CACHE"
+    SCALERS = "SCALERS"
+    SENTIMENT = "SENTIMENT"
+    SYNERGY = "SYNERGY"
+    TICKER = "TICKER"
+    UTILS = "UTILS"
