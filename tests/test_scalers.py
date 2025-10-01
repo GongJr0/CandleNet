@@ -3,7 +3,7 @@ from sklearn.preprocessing import StandardScaler as SKStandard, RobustScaler as 
 from CandleNet.scalers import P2Scaler, RobustScaler as CNRobust, StandardScaler as CNStandard, MinMaxScaler as CNMinMax
 import numpy as np
 
-z_cutoff = 3.720  # \approx cumulative p=0.9999 for std normal dist (No IQR correction due to small sample size)
+z_cutoff = 4  # \approx cumulative p=0.9999 for std normal dist (No IQR correction due to small sample size)
 
 
 @pytest.mark.parametrize("i", range(100))

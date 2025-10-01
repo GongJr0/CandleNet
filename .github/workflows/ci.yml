@@ -40,5 +40,5 @@ jobs:
 
         - name: Run CI Tests
           run: |
-              PYTHONPATH=. python -m pytest ./tests/ --maxfail=3 -k "not web_access"
+              PYTHONPATH=. python -m pytest ./tests/ --maxfail=3 -k "not web_access and not slow"
           

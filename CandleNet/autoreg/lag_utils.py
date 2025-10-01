@@ -4,7 +4,9 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm  # type: ignore
 from statsmodels.stats.multitest import multipletests  # type: ignore
+from scipy.stats import norm  # type: ignore
 from CandleNet.utils import SERIES
+from math import sqrt
 
 
 def get_formatted_arr(arr: SERIES) -> pd.DataFrame:
@@ -233,11 +235,8 @@ def _wilson_interval(
     p_hat = np.divide(
         successes, trials, out=np.zeros_like(successes, dtype=float), where=trials > 0
     )
-    from math import sqrt
 
     # z for two-sided
-    from scipy.stats import norm  # type: ignore
-
     z = float(norm.ppf(0.5 + conf / 2.0))
     denom = 1.0 + (z * z) / trials
     center = p_hat + (z * z) / (2.0 * trials)
