@@ -117,6 +117,5 @@ def main() -> None:
             to_sql(outfile)
         case _:
             print(f"Unsupported format: {args.format}")
-
 if __name__ == "__main__":
     main()
