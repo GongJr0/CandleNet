@@ -41,12 +41,18 @@ class Config:
 
 
 lag_defaults: LagConfig = {
-    "minLags": 2, "maxLags": "auto", "selectionMethod": "auto", "sigLevel": 0.05
+    "minLags": 2,
+    "maxLags": "auto",
+    "selectionMethod": "auto",
+    "sigLevel": 0.05,
 }
 
 
 feature_defaults: FeaturePool = {
-    "autoregressive": True, "sentiment": True, "sectoral": True, "technical": True
+    "autoregressive": True,
+    "sentiment": True,
+    "sectoral": True,
+    "technical": True,
 }
 
 lag_dict: LagConfig = {
