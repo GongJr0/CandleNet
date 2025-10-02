@@ -221,7 +221,7 @@ def gspc_tickers() -> dict[str, Ticker]:
         if len(hit) == len(symbols):
             return hit
 
-        data = yf.download(missed_symbols)
+        data = yf.download(missed_symbols, period="1y", interval="1d", auto_adjust=True)
         for symbol in missed_symbols:
             if symbol in data.columns.get_level_values(0):
                 df = data[symbol].dropna(how="all")
