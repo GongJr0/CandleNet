@@ -1,6 +1,5 @@
 from CandleNet.utils import str_encode
 from CandleNet.synergy_matrix import gspc_sector
-from torch import nn, tensor, int64
 
 from typing import Optional
 
