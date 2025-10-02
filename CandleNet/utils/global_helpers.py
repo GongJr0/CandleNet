@@ -96,8 +96,8 @@ def _hash_str(s: str) -> str:
     return sha256(s.lower().strip().encode("utf-8")).hexdigest()
 
 
-def str_encode(s: str) -> np.uint64:
+def str_encode(s: str) -> int:
     """Deterministically map a string to a 64-bit integer via SHA-256."""
     hash_hex = _hash_str(s)
     hash_int = int(hash_hex, 16)
-    return np.uint64(hash_int % (2**64))
+    return hash_int & ((1 << 64) - 1)

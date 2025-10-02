@@ -5,7 +5,7 @@ from typing import Optional
 
 
 class EmbedUtils:
-    def __init__(self):
+    def __init__(self) -> None:
         self.data = gspc_sector()
 
         self._ticker_encoding: Optional[dict[str, int]] = None
