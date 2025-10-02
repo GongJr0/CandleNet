@@ -92,12 +92,12 @@ def pipe(*funcs) -> Callable[[Any], Any]:
 
 
 def _hash_str(s: str) -> str:
-    """Return a SHA-256 hash of the input string."""
+    """Return the SHA-256 hash of the input string."""
     return sha256(s.lower().strip().encode("utf-8")).hexdigest()
 
 
-def str_encode(s: str) -> int:
+def str_encode(s: str) -> np.uint64:
     """Deterministically map a string to a 64-bit integer via SHA-256."""
     hash_hex = _hash_str(s)
     hash_int = int(hash_hex, 16)
-    return np.uint64(hash_int) % (2**64)
+    return np.uint64(hash_int % (2**64))
