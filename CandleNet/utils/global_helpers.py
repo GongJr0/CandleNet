@@ -97,7 +97,7 @@ def _hash_str(s: str) -> str:
 
 
 def str_encode(s: str) -> int:
-    """Encode a string to a unique integer using its SHA-256 hash."""
+    """Deterministically map a string to a 64-bit integer via SHA-256."""
     hash_hex = _hash_str(s)
     hash_int = int(hash_hex, 16)
     return np.uint64(hash_int) % (2**64)
