@@ -49,12 +49,14 @@ feature_defaults = FeaturePool(
     autoregressive=True, sentiment=True, sectoral=True, technical=True
 )
 
-lag_dict: LagConfig = (
-    lag_defaults.copy().update(_conf.get("lagSelection", {})) or lag_defaults
-)
-feature_dict: FeaturePool = (
-    feature_defaults.copy().update(_conf.get("featurePool", {})) or feature_defaults
-)
+lag_dict: LagConfig = {
+    **lag_defaults,
+    **_conf.get("lagSelection", {}),
+}
+feature_dict: FeaturePool = {
+    **feature_defaults,
+    **_conf.get("featurePool", {}),
+}
 
 _index: tuple[str, ...] = valid_index(
     [k for k, v in _conf["index"].items() if v] or _SUPPORTED_INDEX
