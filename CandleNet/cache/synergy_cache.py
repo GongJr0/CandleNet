@@ -5,6 +5,7 @@ from hashlib import sha256
 import json
 from CandleNet.cache import BaseCache
 from CandleNet.cache.codec import Codec
+from ..logger import LogType, OriginType, CallerType
 from typing import Sequence, Optional
 from enum import Enum
 
@@ -32,6 +33,13 @@ class YfCache(BaseCache):
 
         con.execute(query, (tickers, encoded_data, created_at, ttl_epoch))
 
+        self._log(
+            LogType.EVENT,
+            OriginType.USER,
+            CallerType.CACHE,
+            f"Inserted YF data for tickers: {tickers} into cache.",
+        )
+
     def fetch(self, tickers: Sequence[str]) -> Optional[pd.DataFrame]:
         con = self.check_con()
 
@@ -40,13 +48,31 @@ class YfCache(BaseCache):
         cursor = con.execute(query, (tickers,))
         resp = cursor.fetchone()
         if resp is None:
+            self._log(
+                LogType.EVENT,
+                OriginType.USER,
+                CallerType.CACHE,
+                f"Cache miss for tickers: {tickers}.",
+            )
             return None
 
         if self._is_expired(resp[1]):
             self.delete(tickers)
+            self._log(
+                LogType.EVENT,
+                OriginType.SYSTEM,
+                CallerType.CACHE,
+                f"Cache miss (expired) for tickers: {tickers}.",
+            )
             return None
 
         data, _ = resp
+        self._log(
+            LogType.EVENT,
+            OriginType.USER,
+            CallerType.CACHE,
+            f"Cache hit for tickers: {tickers}.",
+        )
         return Codec.dec_arrow(data)
 
     def delete(self, tickers: str) -> None:
@@ -54,12 +80,24 @@ class YfCache(BaseCache):
 
         query = f"""DELETE FROM {self.TABLE_NAME} WHERE tickers = ?;"""
         con.execute(query, (tickers,))
+        self._log(
+            LogType.EVENT,
+            OriginType.USER,
+            CallerType.CACHE,
+            f"Deleted cache entry for tickers: {tickers}.",
+        )
 
     def clear(self) -> None:
         con = self.check_con()
 
         query = f"""DELETE FROM {self.TABLE_NAME};"""
         con.execute(query)
+        self._log(
+            LogType.EVENT,
+            OriginType.SYSTEM,
+            CallerType.CACHE,
+            "Cleared all entries from YF cache.",
+        )
 
     @property
     def TABLE_NAME(self) -> str:
@@ -91,6 +129,12 @@ class CorrCache(BaseCache):
         con.execute(
             query, (sectors_id, corr_type.value, encoded_data, created_at, ttl_epoch)
         )
+        self._log(
+            LogType.EVENT,
+            OriginType.USER,
+            CallerType.CACHE,
+            f"Inserted correlation data for sectors: {sectors_id} into cache.",
+        )
 
     def fetch(
         self, sectors: Sequence[str], corr_type: CorrType
@@ -102,13 +146,31 @@ class CorrCache(BaseCache):
         cursor = con.execute(query, (sectors_id, corr_type.value))
         resp = cursor.fetchone()
         if resp is None:
+            self._log(
+                LogType.EVENT,
+                OriginType.USER,
+                CallerType.CACHE,
+                f"Cache miss for sectors: {sectors_id}.",
+            )
             return None
 
         if self._is_expired(resp[1]):
             self.delete(sectors_id)
+            self._log(
+                LogType.EVENT,
+                OriginType.SYSTEM,
+                CallerType.CACHE,
+                f"Cache miss (expired) for sectors: {sectors_id}.",
+            )
             return None
 
         data, _ = resp
+        self._log(
+            LogType.EVENT,
+            OriginType.USER,
+            CallerType.CACHE,
+            f"Cache hit for sectors: {sectors_id}.",
+        )
         return Codec.dec_arrow(data)
 
     def delete(self, sectors: str) -> None:
@@ -116,12 +178,24 @@ class CorrCache(BaseCache):
 
         query = f"""DELETE FROM {self.TABLE_NAME} WHERE sectors = ?;"""
         con.execute(query, (sectors,))
+        self._log(
+            LogType.EVENT,
+            OriginType.USER,
+            CallerType.CACHE,
+            f"Deleted cache entry for sectors: {sectors}.",
+        )
 
     def clear(self) -> None:
         con = self.check_con()
 
         query = f"""DELETE FROM {self.TABLE_NAME};"""
         con.execute(query)
+        self._log(
+            LogType.EVENT,
+            OriginType.SYSTEM,
+            CallerType.CACHE,
+            "Cleared all entries from correlation cache.",
+        )
 
     @property
     def TABLE_NAME(self) -> str:
@@ -153,7 +227,12 @@ class McapCache(BaseCache):
 
         cur = con.cursor()
         cur.execute(query, params)
-        return
+        self._log(
+            LogType.EVENT,
+            OriginType.USER,
+            CallerType.CACHE,
+            f"Inserted MCAP data for ticker: {ticker} into cache.",
+        )
 
     def fetch(self, ticker: str) -> float | None:
         con = self.check_con()
@@ -165,10 +244,22 @@ class McapCache(BaseCache):
         resp = cur.execute(query, params).fetchone()
 
         if resp is None:
+            self._log(
+                LogType.EVENT,
+                OriginType.USER,
+                CallerType.CACHE,
+                f"Cache miss for ticker: {ticker}.",
+            )
             return None
 
         if self._is_expired(resp[1]):
             self.delete(ticker)
+            self._log(
+                LogType.EVENT,
+                OriginType.SYSTEM,
+                CallerType.CACHE,
+                f"Cache miss (expired) for ticker: {ticker}.",
+            )
             return None
 
         return resp[0]
@@ -181,7 +272,12 @@ class McapCache(BaseCache):
 
         cur = con.cursor()
         cur.execute(query, params)
-        return
+        self._log(
+            LogType.EVENT,
+            OriginType.USER,
+            CallerType.CACHE,
+            f"Deleted cache entry for ticker: {ticker}.",
+        )
 
     def clear(self) -> None:
         con = self.check_con()
@@ -190,7 +286,12 @@ class McapCache(BaseCache):
 
         cur = con.cursor()
         cur.execute(query)
-        return
+        self._log(
+            LogType.EVENT,
+            OriginType.SYSTEM,
+            CallerType.CACHE,
+            "Cleared all entries from MCAP cache.",
+        )
 
     @property
     def TABLE_NAME(self) -> str:

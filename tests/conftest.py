@@ -1,6 +1,6 @@
 from pytest import fixture
-from CandleNet import LogType, OriginType
-from CandleNet import gspc_from_cache
+from CandleNet.logger import LogType, OriginType, CallerType
+from CandleNet.ticker.ticker import gspc_from_cache
 from CandleNet.cache.ticker_cache import TickerCache
 from CandleNet.ticker.ticker import Ticker
 from CandleNet.synergy_matrix import Synergy
@@ -29,6 +29,11 @@ def log_type():
         [LogType.EVENT, LogType.WARNING, LogType.ERROR, LogType.STATUS]
     )
 
+@fixture
+def caller():
+    return random.choice([CallerType.TICKER, CallerType.CACHE, CallerType.UTILS,
+                          CallerType.AUTOREG, CallerType.SYNERGY, CallerType.SCALERS,
+                          CallerType.SENTIMENT])
 
 @fixture(scope="session")
 def sp500_symbols():

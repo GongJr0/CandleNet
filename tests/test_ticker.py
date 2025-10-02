@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from CandleNet import Ticker
+from CandleNet.ticker.ticker import Ticker
 import warnings
 
 

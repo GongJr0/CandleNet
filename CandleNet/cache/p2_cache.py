@@ -1,4 +1,5 @@
 from . import BaseCache
+from ..logger import CallerType, LogType, OriginType
 
 
 class P2Cache(BaseCache):
@@ -25,7 +26,12 @@ class P2Cache(BaseCache):
 
         cur = con.cursor()
         cur.execute(query, values)
-        return
+        self._log(
+            LogType.EVENT,
+            OriginType.USER,
+            CallerType.CACHE,
+            f"Upserted P2 state for '{data_name}' at p={p}",
+        )
 
     def fetch(self, data_name: str, p: float):
         con = self.check_con()
@@ -36,6 +42,12 @@ class P2Cache(BaseCache):
         resp = cur.fetchone()
 
         if resp is None:
+            self._log(
+                LogType.EVENT,
+                OriginType.USER,
+                CallerType.CACHE,
+                f"No P2 state found for '{data_name}' at p={p}",
+            )
             return None
 
         N = resp[2]
@@ -52,7 +64,12 @@ class P2Cache(BaseCache):
         query = f"DELETE FROM {self.TABLE_NAME} WHERE data_name = ?"
         cur.execute(query, (data_name,))
         con.commit()
-        return
+        self._log(
+            LogType.EVENT,
+            OriginType.SYSTEM,
+            CallerType.CACHE,
+            f"Deleted P2 state for '{data_name}'",
+        )
 
     def clear(self):
         con = self.check_con()
@@ -61,7 +78,12 @@ class P2Cache(BaseCache):
         query = f"DELETE FROM {self.TABLE_NAME}"
         cur.execute(query)
         con.commit()
-        return
+        self._log(
+            LogType.EVENT,
+            OriginType.SYSTEM,
+            CallerType.CACHE,
+            "Cleared all P2 state entries",
+        )
 
     @property
     def TABLE_NAME(self) -> str:
