@@ -6,6 +6,7 @@ from .global_helpers import (
     uptri_vals,
     uptri_abs_var,
     matrix_describe,
+    str_encode,
     FRAME,
     SERIES,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "uptri_vals",
     "uptri_abs_var",
     "matrix_describe",
+    "str_encode",
     "FRAME",
     "SERIES",
 ]

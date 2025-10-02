@@ -1,1 +1,1 @@
-from .synergy import Synergy
+from .synergy import Synergy, gspc_sector

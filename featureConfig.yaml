@@ -1,0 +1,19 @@
+# Which index components to include in the feature pool.
+index:
+  GSPC: true  # S&P 500
+  DJI: false  # [WIP, Unsupported] Dow Jones Industrial Average
+  IXIC: false # [WIP, Unsupported] NASDAQ Composite
+  NDX: false  # [WIP, Unsupported] NASDAQ-100
+
+# Autoregressive feature generation settings.
+lagSelection:
+  minLags: 2
+  maxLags: auto         # Select based on results of lag significance tests
+  selectionMethod: auto  # Auto
+  sigLevel: 0.05
+
+featurePool:
+  autoregressive: true
+  sentiment: true
+  sectoral: true
+  technical: true

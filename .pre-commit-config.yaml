@@ -11,7 +11,7 @@ repos:
     hooks:
       - id: mypy
         language_version: python3.13
-        additional_dependencies: [pandas-stubs, types-requests, pyarrow-stubs, types-html5lib, lxml-stubs, scipy-stubs, types-seaborn]
+        additional_dependencies: [pandas-stubs, types-requests, pyarrow-stubs, types-html5lib, lxml-stubs, scipy-stubs, types-seaborn, types-PyYAML]
         files: ^CandleNet/.*\.py$
         # If you use pyproject.toml for mypy config, no args needed.
         # Otherwise you can add args, but DO NOT pass paths here.
