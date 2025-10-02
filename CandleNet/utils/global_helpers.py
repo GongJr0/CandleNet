@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from typing import Union, Callable, Any
 from functools import reduce
+from hashlib import sha256
 
 FRAME = Union[pd.DataFrame, np.ndarray, pd.Series]
 SERIES = Union[pd.Series, np.ndarray]
@@ -88,3 +89,15 @@ def matrix_describe(A: FRAME) -> pd.Series:
 def pipe(*funcs) -> Callable[[Any], Any]:
     """Compose multiple single-argument functions into a single callable."""
     return lambda x: reduce(lambda x, f: f(x), funcs, x)
+
+
+def _hash_str(s: str) -> str:
+    """Return a SHA-256 hash of the input string."""
+    return sha256(s.lower().strip().encode("utf-8")).hexdigest()
+
+
+def str_encode(s: str) -> int:
+    """Encode a string to a unique integer using its SHA-256 hash."""
+    hash_hex = _hash_str(s)
+    hash_int = int(hash_hex, 16)
+    return np.uint64(hash_int) % (2**64)

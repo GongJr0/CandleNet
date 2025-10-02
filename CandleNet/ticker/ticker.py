@@ -1,13 +1,15 @@
 from io import StringIO
 import requests
 from typing import Optional
+import yfinance as yf  # type: ignore[import-untyped]
+import pandas as pd
+import numpy as np
+
 from .ticker_data import TickerData
 from ..cache.ticker_cache import TickerCache
 from ..sentiment import get_sentiment_obj
 from ..utils import get_lib
-import yfinance as yf  # type: ignore[import-untyped]
-import pandas as pd
-import numpy as np
+from .. import config
 
 
 class Ticker:
@@ -229,7 +231,7 @@ def gspc_tickers() -> dict[str, Ticker]:
 
         unordered = {**hit, **miss}
         tickers = {symbol: unordered[symbol] for symbol in symbols}
-    return tickers
+        return tickers
 
 
 def gspc_from_cache() -> dict[str, Ticker]:
@@ -247,3 +249,42 @@ def gspc_from_cache() -> dict[str, Ticker]:
                 tickers[symbol] = Ticker(symbol, _from_cache=resp)
 
     return tickers
+
+
+_getters = {
+    "GSPC": gspc_tickers,
+}
+
+_cache_getters = {
+    "GSPC": gspc_from_cache,
+}
+
+
+def _getter(cache: bool) -> dict[str, Ticker]:
+    index = config.index
+    if not index:
+        raise ValueError("No index configured. Please check the configuration.")
+
+    all_tickers = {}
+    for idx in index:
+        if cache:
+            if idx in _cache_getters:
+                all_tickers.update(_cache_getters[idx]())
+            else:
+                raise NotImplementedError(
+                    f"Cache getter for index {idx} is not implemented."
+                )
+        else:
+            if idx in _getters:
+                all_tickers.update(_getters[idx]())
+            else:
+                raise NotImplementedError(f"Getter for index {idx} is not implemented.")
+    return all_tickers
+
+
+def get_tickers() -> dict[str, Ticker]:
+    return _getter(cache=False)
+
+
+def get_tickers_from_cache() -> dict[str, Ticker]:
+    return _getter(cache=True)
