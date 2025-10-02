@@ -1,6 +1,6 @@
 from pytest import fixture
 from CandleNet.logger import LogType, OriginType, CallerType
-from CandleNet import gspc_from_cache
+from CandleNet.ticker.ticker import gspc_from_cache
 from CandleNet.cache.ticker_cache import TickerCache
 from CandleNet.ticker.ticker import Ticker
 from CandleNet.synergy_matrix import Synergy

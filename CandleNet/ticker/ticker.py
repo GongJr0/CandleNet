@@ -207,15 +207,28 @@ def _get_gspc() -> list:
 
 def gspc_tickers() -> dict[str, Ticker]:
     symbols = _get_gspc()
-    data = yf.download(symbols, period="1y", interval="1d", auto_adjust=True)
-    data.columns = data.columns.swaplevel(0, 1)
+    missed_symbols = []
+    hit = {}
+    miss = {}
+    with TickerCache() as c:
+        for symbol in symbols:
+            if (resp := c[symbol]) is not None:
+                hit[symbol] = Ticker(symbol, _from_cache=resp)
 
-    tickers = {}
-    for symbol in symbols:
-        if symbol in data.columns.get_level_values(0):
-            df = data[symbol].dropna(how="all")
-            tickers[symbol] = Ticker(symbol, _from_bulk_download=True, raw_data=df)
+            else:
+                missed_symbols.append(symbol)
 
+        if len(hit) == len(symbols):
+            return hit
+
+        data = yf.download(missed_symbols)
+        for symbol in missed_symbols:
+            if symbol in data.columns.get_level_values(0):
+                df = data[symbol].dropna(how="all")
+                miss[symbol] = Ticker(symbol, _from_bulk_download=True, raw_data=df)
+
+        unordered = {**hit, **miss}
+        tickers = {symbol: unordered[symbol] for symbol in symbols}
     return tickers
 
 
