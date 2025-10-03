@@ -26,7 +26,7 @@ except (FileNotFoundError, yaml.YAMLError):
 
 class LagConfig(TypedDict):
     minLagsSelected: int
-    maxLagsSelected: Union[int, Literal["auto"], None]
+    maxLagsSelected: Union[int, Literal["auto"]]
     maxLag: int
     selectionMethod: Literal["fdrAdjusted", "rawPval"]
     sigLevel: float
