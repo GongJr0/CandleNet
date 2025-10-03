@@ -5,6 +5,7 @@ import pandas as pd
 import statsmodels.api as sm  # type: ignore
 from statsmodels.stats.multitest import multipletests  # type: ignore
 from scipy.stats import norm  # type: ignore
+from CandleNet.logger import Logger, LogType, OriginType, CallerType
 
 
 from CandleNet.utils import SERIES
@@ -24,7 +25,9 @@ def get_formatted_arr(arr: SERIES) -> pd.DataFrame:
     Raises:
         AssertionError: If `arr` is not one-dimensional.
     """
-    assert arr.ndim == 1, "Input must be 1-dimensional"
+    arr_np = np.asarray(arr)
+    assert arr_np.ndim == 1, "Input must be 1-dimensional"
+
     if isinstance(arr, pd.Series):
         df = pd.DataFrame(arr.values, columns=["T"])
 
@@ -78,7 +81,7 @@ def _auto_nw_bandwidth(n: int) -> int:
     Returns:
         bw (int): Bandwidth for Newey–West/HAC estimation, computed as max(1, round(4 * (n/100)^(2/9))).
     """
-    bw = int(round(4.0 * (max(n, 2) / 100.0) ** (2.0 / 9.0)))
+    bw = round(4.0 * (max(n, 2) / 100.0) ** (2.0 / 9.0))
     return max(bw, 1)
 
 
@@ -602,7 +605,12 @@ def select_lags(y: pd.Series, _debug: bool = False) -> list:
 
     if selected.empty:
         if _debug:
-            print("No lags selected by criteria.")
+            Logger().log(
+                LogType.WARNING,
+                OriginType.SYSTEM,
+                CallerType.AUTOREG,
+                "No lags selected by criteria. Augmenting with top lags by [ASC] p-value & [DESC] freq.",
+            )
         topn = max(params.get("rankTopN", 0), params["minLagsSelected"])
         selected = res.sort_values(by=["p_base", "freq"], ascending=[True, False]).head(
             topn
@@ -614,10 +622,14 @@ def select_lags(y: pd.Series, _debug: bool = False) -> list:
 
         need = params["minLagsSelected"] - len(selected)
         if _debug:
-            print(
+            Logger().log(
+                LogType.WARNING,
+                OriginType.SYSTEM,
+                CallerType.AUTOREG,
                 f"{len(selected)} lags selected by criteria. Augmenting top {need} "
-                f"remaining lags by [ASC] p-value & [DESC] freq."
+                f"remaining lags by [ASC] p-value & [DESC] freq.",
             )
+
         # sort remaining by p then freq (desc)
         remaining = res[~mask].sort_values(
             by=["p_base", "freq"], ascending=[True, False]
@@ -627,9 +639,12 @@ def select_lags(y: pd.Series, _debug: bool = False) -> list:
     # Enforce maxLagsSelected cap
     if len(selected) > r["max_selected"]:
         if _debug:
-            print(
+            Logger().log(
+                LogType.WARNING,
+                OriginType.SYSTEM,
+                CallerType.AUTOREG,
                 f"{len(selected)} lags selected by criteria. Capping to top {r['max_selected']} "
-                f"by [ASC] p-value & [DESC] freq."
+                f"by [ASC] p-value & [DESC] freq.",
             )
         selected = selected.sort_values(
             by=["p_base", "freq"], ascending=[True, False]
