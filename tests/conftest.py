@@ -38,6 +38,14 @@ def caller():
 @fixture(scope="session")
 def sp500_symbols():
     # If gspc_from_cache returns a dict[symbol -> Ticker], adapt:
+    """
+    Get the S&P 500 ticker symbols from the local ticker cache.
+    
+    If the cache returns a mapping of symbol -> Ticker, returns the mapping's keys as a list; otherwise returns the cached sequence as-is.
+    
+    Returns:
+        symbols (list[str]): List of ticker symbol strings.
+    """
     cached = get_tickers_from_cache()
     return list(cached) if isinstance(cached, dict) else cached  # robust
 
@@ -83,6 +91,11 @@ def _seed_numpy():
 
 @fixture(scope="session", autouse=False)
 def _gspc_to_txt():
+    """
+    Ensure a local ./data directory exists and write the current list of S&P 500 tickers to ./data/gspc.txt, one ticker per line.
+    
+    This overwrites any existing ./data/gspc.txt file.
+    """
     os.makedirs("./data/", exist_ok=True)
     ticker_list = get_tickers_from_cache()
 
