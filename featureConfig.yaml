@@ -7,10 +7,28 @@ index:
 
 # Autoregressive feature generation settings.
 lagSelection:
-  minLags: 2
-  maxLags: auto         # Select based on results of lag significance tests
-  selectionMethod: auto  # Auto
+  minLagsSelected: 2  # Minimum number of lags to select
+  maxLagsSelected: auto         # [int, "auto"] Select based on results of lag significance tests. "auto" uses min(20, log2(n)+2)
+  maxLag: 20  # Maximum lag to consider
+  selectionMethod: fdrAdjusted  # [fdrAdjusted, rawPval]
   sigLevel: 0.05
+
+  requireStability: true
+  stabilityFreq: 0.25  # Proportion of bootstrap samples in which a lag must be significant to be included
+  stabilityConfidence: 0.95  # Confidence level for stability check
+  stabilityCheckEvery: 25  # Check stability every N bootstrap samples
+
+  bootstrapSamples: 500  # Number of bootstrap samples to draw (Disable early stop to guarantee all samples are drawn)
+  minBootstrapSamples: 100  # Minimum number of bootstrap samples to draw before considering early stopping
+  earlyStop: true
+  blockLen": auto  # [int, "auto"] Block length for bootstrap, "auto" uses max(5, floor(n ** (1 / 3))
+
+  rankTopN: 2  # If no lags are selected by tests, select the top N lags by p-value
+
+  hacBandwidth: auto  # [int, "auto"] Bandwidth for HAC standard errors, "auto" uses Newey-West optimal
+
+  randomSeed: null  # [int, null] Random seed for reproducibility, null for random
+
 
 featurePool:
   autoregressive: true

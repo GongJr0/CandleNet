@@ -1,6 +1,7 @@
-import yaml, pathlib
+import yaml
+import pathlib
 from dataclasses import dataclass
-from typing import TypedDict, Union, Literal, Iterable
+from typing import TypedDict, Union, Literal, Iterable, Mapping, Optional, Any
 from types import MappingProxyType
 
 _SUPPORTED_INDEX = [
@@ -16,14 +17,35 @@ def valid_index(x: Iterable[str]) -> tuple[str, ...]:
 
 
 _confPath = pathlib.Path("./featureConfig.yaml")
-_conf = yaml.safe_load(_confPath.read_text())
+try:
+    _text = _confPath.read_text()
+    _conf = yaml.safe_load(_text) or {}
+except FileNotFoundError:
+    _conf = {}
 
 
 class LagConfig(TypedDict):
-    minLags: int
-    maxLags: Union[int, Literal["auto"], None]
-    selectionMethod: Literal["auto"]  # One method as of now
+    minLagsSelected: int
+    maxLagsSelected: Union[int, Literal["auto"], None]
+    maxLags: int
+    selectionMethod: Literal["fdrAdjusted", "rawPval"]
     sigLevel: float
+
+    requireStability: bool
+    stabilityFreq: float
+    stabilityConfidence: float
+    stabilityCheckEvery: int
+
+    bootstrapSamples: int
+    minBootstrapSamples: int
+    earlyStop: bool
+    blockLen: Union[int, Literal["auto"]]
+
+    rankTopN: int
+
+    hacBandwidth: Union[int, Literal["auto"]]
+
+    randomSeed: Optional[int]
 
 
 class FeaturePool(TypedDict):
@@ -36,15 +58,27 @@ class FeaturePool(TypedDict):
 @dataclass(frozen=True)
 class Config:
     index: tuple[str, ...]
-    lagSelection: LagConfig
-    featurePool: FeaturePool
+    lagSelection: Mapping[str, Any]
+    featurePool: Mapping[str, Any]
 
 
 lag_defaults: LagConfig = {
-    "minLags": 2,
-    "maxLags": "auto",
-    "selectionMethod": "auto",
+    "minLagsSelected": 2,
+    "maxLagsSelected": "auto",
+    "maxLags": 20,
+    "selectionMethod": "fdrAdjusted",
     "sigLevel": 0.05,
+    "requireStability": True,
+    "stabilityFreq": 0.25,
+    "stabilityConfidence": 0.95,
+    "stabilityCheckEvery": 25,
+    "bootstrapSamples": 500,
+    "minBootstrapSamples": 100,
+    "earlyStop": True,
+    "blockLen": "auto",
+    "rankTopN": 5,
+    "hacBandwidth": "auto",
+    "randomSeed": None,
 }
 
 
@@ -55,11 +89,12 @@ feature_defaults: FeaturePool = {
     "technical": True,
 }
 
-lag_dict: LagConfig = {
+lag_conf: dict = _conf.get("lagSelection", {})
+lag_dict: dict = {
     **lag_defaults,
-    **_conf.get("lagSelection", {}),
+    **lag_conf,
 }
-feature_dict: FeaturePool = {
+feature_dict: dict = {
     **feature_defaults,
     **_conf.get("featurePool", {}),
 }
@@ -73,6 +108,6 @@ _feature = MappingProxyType(feature_dict)
 
 config: Config = Config(
     index=_index,
-    lagSelection=_lag,  # type: ignore
-    featurePool=_feature,  # type: ignore
+    lagSelection=_lag,
+    featurePool=_feature,
 )

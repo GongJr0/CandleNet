@@ -1,6 +1,6 @@
 from pytest import fixture
 from CandleNet.logger import LogType, OriginType, CallerType
-from CandleNet.ticker.ticker import gspc_from_cache
+from CandleNet.ticker.ticker import get_tickers_from_cache
 from CandleNet.cache.ticker_cache import TickerCache
 from CandleNet.ticker.ticker import Ticker
 from CandleNet.synergy_matrix import Synergy
@@ -38,7 +38,7 @@ def caller():
 @fixture(scope="session")
 def sp500_symbols():
     # If gspc_from_cache returns a dict[symbol -> Ticker], adapt:
-    cached = gspc_from_cache()
+    cached = get_tickers_from_cache()
     return list(cached) if isinstance(cached, dict) else cached  # robust
 
 
@@ -84,7 +84,7 @@ def _seed_numpy():
 @fixture(scope="session", autouse=False)
 def _gspc_to_txt():
     os.makedirs("./data/", exist_ok=True)
-    ticker_list = gspc_from_cache()
+    ticker_list = get_tickers_from_cache()
 
     with open("./data/gspc.txt", "w") as f:
         f.write("\n".join(ticker_list))

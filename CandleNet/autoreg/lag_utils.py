@@ -1,12 +1,14 @@
 from __future__ import annotations
-from typing import Generator, Optional, Tuple
+from typing import Generator, Optional, Tuple, Literal, Mapping
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm  # type: ignore
 from statsmodels.stats.multitest import multipletests  # type: ignore
 from scipy.stats import norm  # type: ignore
+
+
 from CandleNet.utils import SERIES
-from math import sqrt
+from CandleNet import lag_config, LagConfig
 
 
 def get_formatted_arr(arr: SERIES) -> pd.DataFrame:
@@ -59,7 +61,9 @@ def _auto_nw_bandwidth(n: int) -> int:
     return max(bw, 1)
 
 
-def lag_significance_hac(y, max_lag=20, bandwidth="auto", fdr=False, alpha=0.05):
+def lag_significance_hac(
+    y, max_lag=20, bandwidth: int | Literal["auto"] = "auto", fdr=False, alpha=0.05
+):
     """
     Returns a DataFrame with beta, HAC t and p-values for y_t ~ y_{t-k}.
     """
@@ -114,7 +118,7 @@ def _infer_block_len(n: int) -> int:
 def cbb_indices(
     n: int,
     B: int,
-    block_len: Optional[int] = None,
+    block_len: int | Literal["auto"] = "auto",
     rng: Optional[np.random.Generator] = None,
 ) -> Generator[np.ndarray, None, None]:
     """
@@ -126,7 +130,7 @@ def cbb_indices(
         Sample length (time dimension).
     B : int
         Number of bootstrap replicates.
-    block_len : int, optional
+    block_len : int, "auto"
         Block length l. If None, uses a simple heuristic.
     rng : np.random.Generator, optional
         Numpy RNG. If None, uses default Generator.
@@ -141,7 +145,7 @@ def cbb_indices(
     if B <= 0:
         raise ValueError("B must be positive.")
 
-    if block_len is None:
+    if block_len == "auto":
         block_len = _infer_block_len(n)
     if block_len <= 0:
         raise ValueError("block_len must be positive.")
@@ -167,7 +171,7 @@ def cbb_indices(
 def cbb_sample(
     X: np.ndarray,
     B: int,
-    block_len: Optional[int] = None,
+    block_len: int | Literal["auto"] = "auto",
     rng: Optional[np.random.Generator] = None,
     return_indices: bool = False,
 ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
@@ -180,7 +184,7 @@ def cbb_sample(
         Time-series array. Shape (n,) or (n, p). If 1D, treated as (n, 1).
     B : int
         Number of bootstrap replicates.
-    block_len : int, optional
+    block_len : int, "auto"
         Block length l. If None, uses heuristic.
     rng : np.random.Generator, optional
         RNG for reproducibility.
@@ -261,8 +265,8 @@ def bootstrapped_significance(
     y: pd.Series,
     max_lag: int = 20,
     B: int = 200,
-    block_len: Optional[int] = None,
-    bandwidth: str = "auto",
+    block_len: int | Literal["auto"] = "auto",
+    bandwidth: int | Literal["auto"] = "auto",
     alpha: float = 0.05,
     rng: Optional[np.random.Generator] = None,
     # optional knobs:
@@ -391,3 +395,123 @@ def bootstrapped_significance(
     return out.sort_values(
         ["selected", "freq", "top_freq"], ascending=[False, False, False]
     )
+
+
+def _auto_newey_west_bandwidth(n: int) -> int:
+    # Andrews (1991)-style: round(4 * (n/100)^(2/9))
+    return max(1, int(round(4.0 * (n / 100.0) ** (2.0 / 9.0))))
+
+
+def _auto_block_len(n: int) -> int:
+    return max(5, int(n ** (1 / 3)))
+
+
+def _resolve_lag_cfg(params: LagConfig, n: int) -> dict:
+    # max_lag tested
+    max_lag = int(params["maxLags"])
+    max_lag = max(1, min(max_lag, n - 2))
+
+    # bandwidth
+    bw = params["hacBandwidth"]
+    if isinstance(bw, str) and bw == "auto":
+        bw = _auto_newey_west_bandwidth(n)
+
+    # block length
+    bl = params["blockLen"]
+    if isinstance(bl, str) and bl == "auto":
+        bl = _auto_block_len(n)
+
+    # bootstrap samples
+    B = params["bootstrapSamples"]
+    if isinstance(B, str) and B == "auto":
+        # heuristic: proportional to tested lags, capped
+        B = max(params["minBootstrapSamples"], min(300, 20 * max_lag))
+
+    # max lags selected
+    msel = params["maxLagsSelected"]
+    if isinstance(msel, str) and msel == "auto":
+        # simple, conservative default
+        msel = max(params["minLagsSelected"], min(5, max_lag))
+
+    assert isinstance(msel, int) and msel >= 0
+
+    return {
+        "max_lag": max_lag,
+        "bandwidth": int(bw),
+        "block_len": int(bl),
+        "B": int(B),
+        "max_selected": int(msel),
+    }
+
+
+def select_lags(y: pd.Series) -> list:
+    """
+    Wrapper around bootstrapped_significance to return selected lags only.
+    Returns a sorted Index of lag integers.
+    """
+    params = lag_config()
+    n = int(len(y))
+    if n < 10:
+        return []
+
+    rand_seed = params.get("randomSeed")
+    rng = np.random.default_rng(rand_seed)
+
+    r = _resolve_lag_cfg(params, n)
+    # run the test
+    res = bootstrapped_significance(
+        y,
+        max_lag=r["max_lag"],
+        B=r["B"],
+        block_len=r["block_len"],
+        bandwidth=(
+            params["hacBandwidth"]
+            if params["hacBandwidth"] != "auto"
+            else r["bandwidth"]
+        ),
+        alpha=params["sigLevel"],
+        use_fdr_end=(params["selectionMethod"] == "fdrAdjusted"),
+        min_freq=params["stabilityFreq"] if params["requireStability"] else 0.0,
+        early_stop=params["earlyStop"],
+        b_min=params["minBootstrapSamples"],
+        check_every=params["stabilityCheckEvery"],
+        conf=params["stabilityConfidence"],
+        rng=rng,
+    )
+
+    # --- Build mask(s)
+    if params["selectionMethod"] == "fdrAdjusted":
+        base_mask = res["reject_base_fdr"].astype(bool)
+    else:  # "rawPval"
+        base_mask = res["p_base"] < params["sigLevel"]
+
+    mask = base_mask
+    if params["requireStability"]:
+        mask = mask & res["stable"].astype(bool)
+
+    selected = res[mask]
+
+    # Ensure at least minLagsSelected
+    if len(selected) < params["minLagsSelected"]:
+
+        need = params["minLagsSelected"] - len(selected)
+        print(
+            f"{len(selected)} lags selected by criteria. Augmenting top {need} remaining lags by [ASC] p-value & [DESC] freq."
+        )
+        # sort remaining by p then freq (desc)
+        remaining = res[~mask].sort_values(
+            by=["p_base", "freq"], ascending=[True, False]
+        )
+        selected = pd.concat([selected, remaining.head(need)], axis=0)
+
+    # Enforce maxLagsSelected cap
+    if len(selected) > r["max_selected"]:
+        print(
+            f"{len(selected)} lags selected by criteria. Capping to top {r['max_selected']} by [ASC] p-value & [DESC] freq."
+        )
+        selected = selected.sort_values(
+            by=["p_base", "freq"], ascending=[True, False]
+        ).head(r["max_selected"])
+
+    # Return sorted lag index (assumes index is the lag)
+    return selected.index.sort_values().tolist()
