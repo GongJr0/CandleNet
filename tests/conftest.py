@@ -29,11 +29,13 @@ def log_type():
         [LogType.EVENT, LogType.WARNING, LogType.ERROR, LogType.STATUS]
     )
 
+
 @fixture
 def caller():
     return random.choice([CallerType.TICKER, CallerType.CACHE, CallerType.UTILS,
                           CallerType.AUTOREG, CallerType.SYNERGY, CallerType.SCALERS,
                           CallerType.SENTIMENT])
+
 
 @fixture(scope="session")
 def sp500_symbols():
@@ -47,7 +49,7 @@ def sp500_symbols():
         symbols (list[str]): List of ticker symbol strings.
     """
     cached = get_tickers_from_cache()
-    return list(cached) if isinstance(cached, dict) else cached  # robust
+    return list(cached.keys()) if isinstance(cached, dict) else cached  # robust
 
 
 @fixture(scope="function")
@@ -70,6 +72,7 @@ def arr():
     size = random.randint(50, 100)
     size = size**2  # len(arr) == len(ndarray) with same rng
     return np.random.randn(size, 1) * (10**mag)
+
 
 @fixture
 def ndarray():

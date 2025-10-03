@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Generator, Optional, Tuple, Literal, Mapping
+from typing import Generator, Optional, Tuple, Literal
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm  # type: ignore
@@ -14,13 +14,13 @@ from CandleNet import lag_config, LagConfig
 def get_formatted_arr(arr: SERIES) -> pd.DataFrame:
     """
     Convert a 1D series or array-like into a pandas DataFrame with a single column named "T".
-    
+
     Parameters:
         arr (Series | np.ndarray | array-like): One-dimensional input sequence to convert.
-    
+
     Returns:
         pd.DataFrame: DataFrame of shape (len(arr), 1) with column "T" containing the input values.
-    
+
     Raises:
         AssertionError: If `arr` is not one-dimensional.
     """
@@ -71,10 +71,10 @@ def _auto_nw_bandwidth(n: int) -> int:
     # 4 * (n/100)^(2/9), at least 1
     """
     Compute a small-sample Newey–West (Andrews-style) bandwidth heuristic.
-    
+
     Parameters:
         n (int): Sample size (number of observations) used to derive the bandwidth.
-    
+
     Returns:
         bw (int): Bandwidth for Newey–West/HAC estimation, computed as max(1, round(4 * (n/100)^(2/9))).
     """
@@ -86,20 +86,23 @@ def lag_significance_hac(
     y, max_lag=20, bandwidth: int | Literal["auto"] = "auto", fdr=False, alpha=0.05
 ):
     """
-    Compute HAC-robust lag regressions of y_t on y_{t-k} for k = 1..max_lag and report coefficients and test statistics.
-    
+    Compute HAC-robust lag regressions of y_t on y_{t-k} for k = 1...max_lag and report coefficients and
+    test statistics.
+
     Parameters:
         y: array-like
             Univariate time series.
-        max_lag (int): 
+        max_lag (int):
             Maximum lag k to test (tests 1 through max_lag).
         bandwidth (int or "auto"):
-            Newey–West/HAC lag parameter (maxlags) to use for covariance estimation; if "auto", a data-dependent heuristic is used.
+            Newey–West/HAC lag parameter (maxlags) to use for covariance estimation; if "auto",
+            a data-dependent heuristic is used.
         fdr (bool):
-            If True, apply Benjamini–Hochberg false discovery rate correction to the returned p-values and include a `reject_fdr` boolean column.
+            If True, apply Benjamini–Hochberg false discovery rate correction to the returned p-values and include
+            a `reject_fdr` boolean column.
         alpha (float):
             Significance level used only for the FDR procedure.
-    
+
     Returns:
         pandas.DataFrame:
             One row per tested lag with columns:
@@ -109,9 +112,10 @@ def lag_significance_hac(
             - "p": two-sided p-value for the lag coefficient.
             - "n": number of observations used for that regression.
             If `fdr` is True, includes an additional boolean column "reject_fdr" indicating FDR rejections.
-    
+
     Notes:
-        For lags where there are fewer than 10 paired observations, the row contains NaNs for beta, t, and p while "n" records the sample size.
+        For lags where there are fewer than 10 paired observations, the row contains NaNs for beta, t,
+        and p while "n" records the sample size.
     """
 
     rows = []
@@ -169,16 +173,19 @@ def cbb_indices(
 ) -> Generator[np.ndarray, None, None]:
     """
     Yield index arrays for circular block bootstrap resampling of a length-n series.
-    
+
     Parameters:
         n (int): Length of the original time series.
         B (int): Number of bootstrap replicates to generate.
-        block_len (int or "auto"): Block length to use for the circular blocks. If "auto", a heuristic based on `n` is used.
-        rng (np.random.Generator, optional): Random number generator to sample block starting positions. If omitted, a default Generator is created.
-    
+        block_len (int or "auto"): Block length to use for the circular blocks. If "auto",
+        a heuristic based on `n` is used.
+        rng (np.random.Generator, optional): Random number generator to sample block starting positions. If omitted,
+        a default Generator is created.
+
     Yields:
-        np.ndarray: 1-D integer array of length `n` containing indices into the original series for one bootstrap replicate.
-    
+        np.ndarray: 1-D integer array of length `n` containing indices into the original series
+        for one bootstrap replicate.
+
     Raises:
         ValueError: If `n`, `B`, or resolved `block_len` is not positive.
     """
@@ -219,17 +226,19 @@ def cbb_sample(
 ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
     """
     Generate B circular block bootstrap (CBB) resamples of a time series, preserving joint structure across columns.
-    
+
     Parameters:
         X (np.ndarray): Time-series data of shape (n,) or (n, p). 1D inputs are treated as (n, 1).
         B (int): Number of bootstrap replicates to generate.
         block_len (int or "auto"): Block length for the CBB. If "auto", a heuristic block length is chosen.
-        rng (np.random.Generator, optional): Random number generator to control reproducibility. If None, the default global RNG is used.
+        rng (np.random.Generator, optional): Random number generator to control reproducibility. If None,
+        the default global RNG is used.
         return_indices (bool): If True, also return the index matrix used for resampling.
-    
+
     Returns:
         Xb (np.ndarray): Bootstrap samples. Shape is (B, n) for 1D inputs or (B, n, p) for 2D inputs.
-        Ib (np.ndarray or None): Integer index matrix of shape (B, n) used to form each resample when return_indices is True; otherwise None.
+        Ib (np.ndarray or None): Integer index matrix of shape (B, n) used to form each resample when
+        return_indices is True; otherwise None.
     """
     X = np.asarray(X)
     if X.ndim == 1:
@@ -310,24 +319,26 @@ def bootstrapped_significance(
 ) -> pd.DataFrame:
     """
     Compute stability-selection metrics for lag significance using circular block bootstrap resampling.
-    
+
     Parameters:
         y (pd.Series): Time series to test for lagged significance.
-        max_lag (int): Maximum lag to evaluate (lags 1..max_lag).
+        max_lag (int): Maximum lag to evaluate (lags 1...max_lag).
         B (int): Number of bootstrap resamples to draw.
         block_len (int | "auto"): Block length for circular block bootstrap or "auto" to derive from sample size.
-        bandwidth (int | "auto"): Newey–West/HAC bandwidth to use for HAC-covariance estimation or "auto" to derive from sample size.
+        bandwidth (int | "auto"): Newey–West/HAC bandwidth to use for HAC-covariance estimation or "auto" to derive
+        from sample size.
         alpha (float): Significance level used when counting a lag as selected on each resample.
         rng (np.random.Generator | None): Random number generator; a default RNG is created when None.
         use_fdr_end (bool): If True, apply Benjamini–Hochberg FDR to base-sample p-values for final reporting/selection.
         min_freq (float): Frequency threshold in [0,1] used to mark a lag as "stable" (freq >= min_freq).
-        early_stop (bool): If True, allow early stopping of the bootstrap loop when Wilson intervals confidently decide lags.
+        early_stop (bool): If True, allow early stopping of the bootstrap loop when Wilson intervals
+        confidently decide lags.
         b_min (int): Minimum number of bootstrap rounds before performing early-stop checks.
         check_every (int): Interval (in bootstrap rounds) at which early-stop checks are performed.
         conf (float): Confidence level for Wilson intervals used in early stopping (e.g., 0.95).
-    
+
     Returns:
-        pd.DataFrame: Indexed by lag (1..max_lag) with columns:
+        pd.DataFrame: Indexed by lag (1...max_lag) with columns:
             - freq: Empirical selection frequency = Pr[lag significant on a CBB resample at level alpha].
             - top_freq: Fraction of resamples where the lag had the smallest p-value (diagnostic).
             - p_base: Base-sample p-value from HAC-robust regression y_t ~ y_{t-k}.
@@ -337,11 +348,14 @@ def bootstrapped_significance(
             - p_fdr: FDR-adjusted p-value for the base sample (NaN if use_fdr_end is False).
             - reject_base_fdr: Boolean indicating FDR rejection on the base sample (False if use_fdr_end is False).
             - stable: Boolean indicating freq >= min_freq.
-            - selected: Boolean indicating final selection (stable AND base-sample significance per FDR or alpha when FDR disabled).
-    
+            - selected: Boolean indicating final selection (stable AND base-sample significance per FDR or
+            alpha when FDR disabled).
+
     Notes:
-        - The function reports stability (how often a lag is significant under resampling) rather than providing a calibrated null-distribution for test statistics.
-        - Early stopping uses Wilson score intervals on selection frequencies to decide stable/unstable lags before exhausting B samples.
+        - The function reports stability (how often a lag is significant under resampling) rather than providing
+        a calibrated null-distribution for test statistics.
+        - Early stopping uses Wilson score intervals on selection frequencies to decide stable/unstable
+        lags before exhausting B samples.
     """
 
     rng = np.random.default_rng() if rng is None else rng
@@ -456,27 +470,13 @@ def bootstrapped_significance(
     )
 
 
-def _auto_newey_west_bandwidth(n: int) -> int:
-    # Andrews (1991)-style: round(4 * (n/100)^(2/9))
-    """
-    Compute an automatic Newey–West/HAC lag-bandwidth based on sample size.
-    
-    Parameters:
-        n (int): Number of observations in the time series.
-    
-    Returns:
-        int: Suggested bandwidth (lag length) for Newey–West HAC estimation; always at least 1.
-    """
-    return max(1, int(round(4.0 * (n / 100.0) ** (2.0 / 9.0))))
-
-
 def _auto_block_len(n: int) -> int:
     """
     Select an automatic block length for block bootstrap based on the series length.
-    
+
     Parameters:
         n (int): Number of observations in the time series.
-    
+
     Returns:
         block_len (int): Recommended block length, equal to the greater of 5 and the floor of the cube root of `n`.
     """
@@ -487,9 +487,10 @@ def _resolve_lag_cfg(params: LagConfig, n: int) -> dict:
     # max_lag tested
     """
     Resolve a LagConfig mapping into concrete numeric parameters used for lag testing and bootstrapping.
-    
-    This converts potentially symbolic or "auto" entries in `params` into integer values appropriate for a series of length `n`, applying sensible bounds and heuristics where needed.
-    
+
+    This converts potentially symbolic or "auto" entries in `params` into integer values appropriate for
+    a series of length `n`, applying sensible bounds and heuristics where needed.
+
     Parameters:
         params (LagConfig): Configuration mapping containing keys:
             - "maxLags": maximum lag to consider (may be numeric or "auto"-like value).
@@ -499,7 +500,7 @@ def _resolve_lag_cfg(params: LagConfig, n: int) -> dict:
             - "maxLagsSelected": cap on number of selected lags or "auto".
             - "minBootstrapSamples", "minLagsSelected": minimums used when resolving "auto".
         n (int): Length of the time series; used to clamp and derive data-dependent defaults.
-    
+
     Returns:
         dict: A mapping with integer-valued keys:
             - "max_lag": selected max lag (clamped to at least 1 and at most n-2).
@@ -514,7 +515,7 @@ def _resolve_lag_cfg(params: LagConfig, n: int) -> dict:
     # bandwidth
     bw = params["hacBandwidth"]
     if isinstance(bw, str) and bw == "auto":
-        bw = _auto_newey_west_bandwidth(n)
+        bw = _auto_nw_bandwidth(n)
 
     # block length
     bl = params["blockLen"]
@@ -547,11 +548,15 @@ def _resolve_lag_cfg(params: LagConfig, n: int) -> dict:
 def select_lags(y: pd.Series) -> list:
     """
     Select time-series lags deemed significant by a bootstrap stability procedure combined with HAC-robust lag testing.
-    
-    Uses configured selection and stability settings to run the bootstrap-based significance procedure, optionally applies FDR adjustment and stability requirements, enforces configured minimum and maximum selected lags (augmenting or capping as needed), and returns the final sorted selection.
-    
+
+    Uses configured selection and stability settings to run the bootstrap-based significance procedure,
+    optionally applies FDR adjustment and stability requirements,
+    enforces configured minimum and maximum selected lags (augmenting or capping as needed),
+    and returns the final sorted selection.
+
     Returns:
-        list: Sorted list of selected lag integers in ascending order. Returns an empty list if the input series has fewer than 10 observations.
+        list: Sorted list of selected lag integers in ascending order. Returns an empty list if
+        the input series has fewer than 10 observations.
     """
     params = lag_config()
     n = int(len(y))
@@ -600,7 +605,8 @@ def select_lags(y: pd.Series) -> list:
 
         need = params["minLagsSelected"] - len(selected)
         print(
-            f"{len(selected)} lags selected by criteria. Augmenting top {need} remaining lags by [ASC] p-value & [DESC] freq."
+            f"{len(selected)} lags selected by criteria. Augmenting top {need} "
+            f"remaining lags by [ASC] p-value & [DESC] freq."
         )
         # sort remaining by p then freq (desc)
         remaining = res[~mask].sort_values(
@@ -611,7 +617,8 @@ def select_lags(y: pd.Series) -> list:
     # Enforce maxLagsSelected cap
     if len(selected) > r["max_selected"]:
         print(
-            f"{len(selected)} lags selected by criteria. Capping to top {r['max_selected']} by [ASC] p-value & [DESC] freq."
+            f"{len(selected)} lags selected by criteria. Capping to top {r['max_selected']} "
+            f"by [ASC] p-value & [DESC] freq."
         )
         selected = selected.sort_values(
             by=["p_base", "freq"], ascending=[True, False]

@@ -20,7 +20,7 @@ _confPath = pathlib.Path("./featureConfig.yaml")
 try:
     _text = _confPath.read_text()
     _conf = yaml.safe_load(_text) or {}
-except FileNotFoundError:
+except (FileNotFoundError, yaml.YAMLError):
     _conf = {}
 
 
@@ -100,7 +100,7 @@ feature_dict: dict = {
 }
 
 _index: tuple[str, ...] = valid_index(
-    [k for k, v in _conf["index"].items() if v] or _SUPPORTED_INDEX
+    [k for k, v in _conf.get("index", {}).items() if v] or _SUPPORTED_INDEX
 )
 _lag = MappingProxyType(lag_dict)
 _feature = MappingProxyType(feature_dict)

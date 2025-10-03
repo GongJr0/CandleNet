@@ -10,7 +10,7 @@ from typing import cast
 def lag_config() -> LagConfig:
     """
     Access the application's lag selection configuration.
-    
+
     Returns:
         LagConfig: The lag selection configuration from the global config.
     """
@@ -20,7 +20,7 @@ def lag_config() -> LagConfig:
 def feature_pool() -> FeaturePool:
     """
     Get the current feature pool configuration.
-    
+
     Returns:
         FeaturePool: The configured feature pool.
     """
