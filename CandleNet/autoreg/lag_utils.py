@@ -493,7 +493,7 @@ def _resolve_lag_cfg(params: LagConfig, n: int) -> dict:
 
     Parameters:
         params (LagConfig): Configuration mapping containing keys:
-            - "maxLags": maximum lag to consider (may be numeric or "auto"-like value).
+            - "maxLag": maximum lag to consider (may be numeric or "auto"-like value).
             - "hacBandwidth": Newey–West/HAC bandwidth or "auto".
             - "blockLen": circular block bootstrap block length or "auto".
             - "bootstrapSamples": number of bootstrap replicates or "auto".
@@ -509,7 +509,7 @@ def _resolve_lag_cfg(params: LagConfig, n: int) -> dict:
             - "B": number of bootstrap replicates as an int.
             - "max_selected": maximum number of lags to retain as an int (>= 0).
     """
-    max_lag = int(params["maxLags"])
+    max_lag = int(params["maxLag"])
     max_lag = max(1, min(max_lag, n - 2))
 
     # bandwidth
@@ -545,7 +545,7 @@ def _resolve_lag_cfg(params: LagConfig, n: int) -> dict:
     }
 
 
-def select_lags(y: pd.Series) -> list:
+def select_lags(y: pd.Series, _debug: bool = False) -> list:
     """
     Select time-series lags deemed significant by a bootstrap stability procedure combined with HAC-robust lag testing.
 
@@ -559,7 +559,7 @@ def select_lags(y: pd.Series) -> list:
         the input series has fewer than 10 observations.
     """
     params = lag_config()
-    n = int(len(y))
+    n = len(y)
     if n < 10:
         return []
 
@@ -600,14 +600,24 @@ def select_lags(y: pd.Series) -> list:
 
     selected = res[mask]
 
+    if selected.empty:
+        if _debug:
+            print("No lags selected by criteria.")
+        topn = max(params.get("rankTopN", 0), params["minLagsSelected"])
+        selected = res.sort_values(by=["p_base", "freq"], ascending=[True, False]).head(
+            topn
+        )
+        return selected.index.sort_values().tolist()
+
     # Ensure at least minLagsSelected
     if len(selected) < params["minLagsSelected"]:
 
         need = params["minLagsSelected"] - len(selected)
-        print(
-            f"{len(selected)} lags selected by criteria. Augmenting top {need} "
-            f"remaining lags by [ASC] p-value & [DESC] freq."
-        )
+        if _debug:
+            print(
+                f"{len(selected)} lags selected by criteria. Augmenting top {need} "
+                f"remaining lags by [ASC] p-value & [DESC] freq."
+            )
         # sort remaining by p then freq (desc)
         remaining = res[~mask].sort_values(
             by=["p_base", "freq"], ascending=[True, False]
@@ -616,10 +626,11 @@ def select_lags(y: pd.Series) -> list:
 
     # Enforce maxLagsSelected cap
     if len(selected) > r["max_selected"]:
-        print(
-            f"{len(selected)} lags selected by criteria. Capping to top {r['max_selected']} "
-            f"by [ASC] p-value & [DESC] freq."
-        )
+        if _debug:
+            print(
+                f"{len(selected)} lags selected by criteria. Capping to top {r['max_selected']} "
+                f"by [ASC] p-value & [DESC] freq."
+            )
         selected = selected.sort_values(
             by=["p_base", "freq"], ascending=[True, False]
         ).head(r["max_selected"])

@@ -27,7 +27,7 @@ except (FileNotFoundError, yaml.YAMLError):
 class LagConfig(TypedDict):
     minLagsSelected: int
     maxLagsSelected: Union[int, Literal["auto"], None]
-    maxLags: int
+    maxLag: int
     selectionMethod: Literal["fdrAdjusted", "rawPval"]
     sigLevel: float
 
@@ -65,7 +65,7 @@ class Config:
 lag_defaults: LagConfig = {
     "minLagsSelected": 2,
     "maxLagsSelected": "auto",
-    "maxLags": 20,
+    "maxLag": 20,
     "selectionMethod": "fdrAdjusted",
     "sigLevel": 0.05,
     "requireStability": True,
