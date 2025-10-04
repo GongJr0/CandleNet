@@ -173,16 +173,16 @@ class CorrCache(BaseCache):
         )
         return Codec.dec_arrow(data)
 
-    def delete(self, sectors: str) -> None:
+    def delete(self, sectors_id: str) -> None:
         con = self.check_con()
 
         query = f"""DELETE FROM {self.TABLE_NAME} WHERE sectors_id = ?;"""
-        con.execute(query, (sectors,))
+        con.execute(query, (sectors_id,))
         self._log(
             LogType.EVENT,
             OriginType.USER,
             CallerType.CACHE,
-            f"Deleted cache entry for sectors: {sectors}.",
+            f"Deleted cache entry for sectors: {sectors_id}.",
         )
 
     def clear(self) -> None:

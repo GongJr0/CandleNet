@@ -314,19 +314,6 @@ def _wilson_interval(
     return lo, hi
 
 
-def _auto_block_len(n: int) -> int:
-    """
-    Select an automatic block length for block bootstrap based on the series length.
-
-    Parameters:
-        n (int): Number of observations in the time series.
-
-    Returns:
-        block_len (int): Recommended block length, equal to the greater of 5 and the floor of the cube root of `n`.
-    """
-    return max(5, int(n ** (1 / 3)))
-
-
 def _resolve_lag_cfg(params: LagConfig, n: int) -> dict:
     # max_lag tested
     """
@@ -364,7 +351,7 @@ def _resolve_lag_cfg(params: LagConfig, n: int) -> dict:
     # block length
     bl = params["blockLen"]
     if isinstance(bl, str) and bl == "auto":
-        bl = _auto_block_len(n)
+        bl = _infer_block_len(n)
 
     # bootstrap samples
     B = params["bootstrapSamples"]
