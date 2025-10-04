@@ -10,15 +10,16 @@ def _ols_hac_beta_t_vectorized(
 ):
 
     n = y.shape[0]
-    beta = np.empty(max_lag, dtype=np.float64)
-    tval = np.empty(max_lag, dtype=np.float64)
-    nobs = np.empty(max_lag, dtype=np.int64)
+    beta = np.full(max_lag, np.nan, dtype=np.float64)
+    tval = np.full(max_lag, np.nan, dtype=np.float64)
+    nobs = np.zeros(max_lag, dtype=np.int64)
 
     for k in range(1, max_lag + 1):
         N = n - k
         nobs[k - 1] = N
         if N < 10:
-            continue
+            beta[k - 1] = np.nan
+            tval[k - 1] = np.nan
 
         x = y[:N]
         yy = y[k:n]
@@ -39,7 +40,8 @@ def _ols_hac_beta_t_vectorized(
             Sxy += dx * dy
 
         if Sxx <= 0.0:
-            continue
+            beta[k - 1] = np.nan
+            tval[k - 1] = np.nan
 
         b = Sxy / Sxx
 

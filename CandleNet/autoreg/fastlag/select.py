@@ -199,6 +199,9 @@ def cbb_sample(
     else:
         raise ValueError("X must be 1D or 2D (time[, features]).")
 
+    if B <= 0:
+        raise ValueError("B must be positive.")
+
     n = X2.shape[0]
     p = X2.shape[1]
 
@@ -273,7 +276,7 @@ def vectorized_select_lags(y) -> list[int]:
     rank_topn = params["rankTopN"]
     rng = np.random.default_rng(params["randomSeed"])
 
-    yv = y.to_numpy(dtype=np.float64).ravel()
+    yv = np.asarray(y, dtype=np.float64).ravel()
     n = yv.size
     if n < 10:
         return []
@@ -281,8 +284,9 @@ def vectorized_select_lags(y) -> list[int]:
     L = _auto_nw_bandwidth(n) if bandwidth == "auto" else int(bandwidth)
 
     # base-sample
-    beta0, t0, nobs0 = _ols_hac_beta_t_vectorized(yv, max_lag, L)
+    _, t0, _ = _ols_hac_beta_t_vectorized(yv, max_lag, L)
     p0 = 2.0 * norm.sf(np.abs(t0))
+    p0 = np.where(np.isfinite(p0), p0, 1.0)
 
     # bootstrap
     Xb, _ = cbb_sample(yv, B=B, block_len=block_len, rng=rng)  # (B,n)
@@ -295,7 +299,7 @@ def vectorized_select_lags(y) -> list[int]:
     for b in range(1, B + 1):
         if early_stop and decided.all():
             break
-        beta_b, t_b, _ = _ols_hac_beta_t_vectorized(
+        _, t_b, _ = _ols_hac_beta_t_vectorized(
             Xb[b - 1].astype(np.float64, copy=False), max_lag, L
         )
         p_b = 2.0 * norm.sf(np.abs(t_b))
@@ -331,10 +335,9 @@ def vectorized_select_lags(y) -> list[int]:
 
     # Final masks (mirror original)
     if use_fdr_end:
-        reject, p_fdr, _, _ = multipletests(p0, alpha=alpha, method="fdr_bh")
+        reject, *_ = multipletests(p0, alpha=alpha, method="fdr_bh")
     else:
         reject = p0 < alpha
-        p_fdr = np.full_like(p0, np.nan, dtype=np.float64)
 
     stable = (freq >= min_freq) if require_stability else np.ones_like(freq, bool)
     selected_mask = stable & reject if use_fdr_end else stable & (p0 < alpha)

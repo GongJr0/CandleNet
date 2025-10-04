@@ -260,6 +260,9 @@ def cbb_sample(
     else:
         raise ValueError("X must be 1D or 2D (time[, features]).")
 
+    if B <= 0:
+        raise ValueError("B must be positive.")
+
     n = X2.shape[0]
     p = X2.shape[1]
 
@@ -579,6 +582,7 @@ def fast_bootstrapped_significance(
     trials = np.where(decision_b > 0, decision_b, min(B, len(Xb))).astype(np.float64)
     freq = select_counts / np.maximum(trials, 1.0)
     top_f = top_counts / max(B, 1)
+    stable_flag = np.logical_or(stable_flag, freq >= min_freq)
 
     # --- Build the DF once (shape identical to the slow path)
     idx = pd.Index(range(1, max_lag + 1), name="lag")
