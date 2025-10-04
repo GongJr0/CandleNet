@@ -36,10 +36,14 @@ jobs:
           uv pip install -r requirements.txt black==24.10.0 mypy pandas-stubs types-requests pyarrow-stubs types-html5lib lxml-stubs scipy-stubs types-seaborn types-PyYAML      
 
       - name: mypy
-        run: mypy ./CandleNet/
+        run: |
+          source .venv/bin/activate
+          mypy ./CandleNet/
 
       - name: black (check)
-        run: black --check ./CandleNet/
+        run: |
+          source .venv/bin/activate
+          black --check ./CandleNet/
 
 
   test:
