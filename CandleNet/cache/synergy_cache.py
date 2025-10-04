@@ -176,7 +176,7 @@ class CorrCache(BaseCache):
     def delete(self, sectors: str) -> None:
         con = self.check_con()
 
-        query = f"""DELETE FROM {self.TABLE_NAME} WHERE sectors = ?;"""
+        query = f"""DELETE FROM {self.TABLE_NAME} WHERE sectors_id = ?;"""
         con.execute(query, (sectors,))
         self._log(
             LogType.EVENT,
