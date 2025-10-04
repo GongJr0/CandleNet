@@ -545,7 +545,7 @@ def fast_bootstrapped_significance(
         if early_stop and decided.all():
             break
 
-        beta_b, t_b, _ = _ols_hac_beta_t_vectorized(
+        _, t_b, _ = _ols_hac_beta_t_vectorized(
             Xb[b - 1].astype(np.float64, copy=False), max_lag, L
         )
         p_b = 2.0 * norm.sf(np.abs(t_b))

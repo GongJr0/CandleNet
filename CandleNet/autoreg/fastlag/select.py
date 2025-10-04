@@ -281,7 +281,7 @@ def vectorized_select_lags(y) -> list[int]:
     if n < 10:
         return []
 
-    L = _auto_nw_bandwidth(n) if bandwidth == "auto" else int(bandwidth)
+    L = int(bandwidth)
 
     # base-sample
     _, t0, _ = _ols_hac_beta_t_vectorized(yv, max_lag, L)

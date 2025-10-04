@@ -12,6 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
+        id: lint-python
         with:
           python-version: "3.13"
           cache: "pip"
@@ -21,7 +22,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          key: venv-${{ runner.os }}-py${{ steps.lint-python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}
 
       - name: Set up venv
         if: steps.lint-venv-cache.outputs.cache-hit != 'true'
@@ -52,6 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
+        id: test-python
         with:
           python-version: "3.13"
           cache: "pip"
@@ -61,7 +63,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          key: venv-${{ runner.os }}-py${{ steps.test-python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}
 
       - name: Set up venv
         if: steps.test-venv-cache.outputs.cache-hit != 'true'
