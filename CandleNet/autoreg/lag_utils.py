@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Generator, Optional, Tuple, Literal
+from typing import Generator, Optional, Tuple, Literal, Any
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm  # type: ignore
@@ -10,6 +10,13 @@ from CandleNet.logger import Logger, LogType, OriginType, CallerType
 
 from CandleNet.utils import SERIES
 from CandleNet import lag_config, LagConfig
+
+
+def _is_int_like(x: Any) -> bool:
+    if not hasattr(x, "__int__"):
+        return False
+
+    return x - int(x) <= 1e-8
 
 
 def get_formatted_arr(arr: SERIES) -> pd.DataFrame:
@@ -411,9 +418,8 @@ def bootstrapped_significance(
             select_counts[mask] += sel
 
         # rank-based winner (for diagnostics only)
-        top = int(res_b["p"].argmin()) + 1
+        top = int(res_b["p"].nanargmin()) + 1  # raises ValueError if all NaN
         top_rank_counts[top - 1] += 1
-
         # Early stopping check
         if early_stop and b >= b_min and (b % check_every == 0):
             # trials so far for undecided lags is b; for decided we keep their decision point
@@ -532,12 +538,16 @@ def _resolve_lag_cfg(params: LagConfig, n: int) -> dict:
         B = max(params["minBootstrapSamples"], min(300, 20 * max_lag))
 
     # max lags selected
-    msel = params["maxLagsSelected"]
-    if isinstance(msel, str) and msel == "auto":
-        # simple, conservative default
+    msel_cfg = params["maxLagsSelected"]
+    if isinstance(msel_cfg, str) and msel_cfg == "auto":
         msel = max(params["minLagsSelected"], min(5, max_lag))
+    else:
+        msel = msel_cfg
 
-    assert isinstance(msel, int) and msel >= 0
+    assert _is_int_like(msel) and msel >= 0, (
+        f"Unsupported maxLagsSelected: {msel_cfg}. "
+        f"Must be a non-negative integer or 'auto'."
+    )
 
     return {
         "max_lag": max_lag,
