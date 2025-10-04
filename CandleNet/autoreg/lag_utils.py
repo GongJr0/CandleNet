@@ -80,13 +80,13 @@ def _auto_nw_bandwidth(n: int) -> int:
     # Andrews(1991)/Newey-West style small-sample bandwidth; keep it tiny for daily data
     # 4 * (n/100)^(2/9), at least 1
     """
-    Compute a small-sample Newey–West (Andrews-style) bandwidth heuristic.
+    Compute a small-sample Newey-West (Andrews-style) bandwidth heuristic.
 
     Parameters:
         n (int): Sample size (number of observations) used to derive the bandwidth.
 
     Returns:
-        bw (int): Bandwidth for Newey–West/HAC estimation, computed as max(1, round(4 * (n/100)^(2/9))).
+        bw (int): Bandwidth for Newey-West/HAC estimation, computed as max(1, round(4 * (n/100)^(2/9))).
     """
     bw = round(4.0 * (max(n, 2) / 100.0) ** (2.0 / 9.0))
     return max(bw, 1)
@@ -105,10 +105,10 @@ def lag_significance_hac(
         max_lag (int):
             Maximum lag k to test (tests 1 through max_lag).
         bandwidth (int or "auto"):
-            Newey–West/HAC lag parameter (maxlags) to use for covariance estimation; if "auto",
+            Newey-West/HAC lag parameter (maxlags) to use for covariance estimation; if "auto",
             a data-dependent heuristic is used.
         fdr (bool):
-            If True, apply Benjamini–Hochberg false discovery rate correction to the returned p-values and include
+            If True, apply Benjamini-Hochberg false discovery rate correction to the returned p-values and include
             a `reject_fdr` boolean column.
         alpha (float):
             Significance level used only for the FDR procedure.
@@ -151,7 +151,7 @@ def lag_significance_hac(
     out = pd.DataFrame(rows, columns=["lag", "beta", "t", "p", "n"])
 
     if fdr:
-        # Benjamini–Hochberg on the p's (ignore NaNs)
+        # Benjamini-Hochberg on the p's (ignore NaNs)
         p = out["p"].to_numpy()
         idx = np.where(~np.isnan(p))[0]
         if idx.size:
@@ -325,7 +325,7 @@ def _resolve_lag_cfg(params: LagConfig, n: int) -> dict:
     Parameters:
         params (LagConfig): Configuration mapping containing keys:
             - "maxLag": maximum lag to consider (may be numeric or "auto"-like value).
-            - "hacBandwidth": Newey–West/HAC bandwidth or "auto".
+            - "hacBandwidth": Newey-West/HAC bandwidth or "auto".
             - "blockLen": circular block bootstrap block length or "auto".
             - "bootstrapSamples": number of bootstrap replicates or "auto".
             - "maxLagsSelected": cap on number of selected lags or "auto".
