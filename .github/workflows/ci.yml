@@ -12,33 +12,73 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
+        id: lint-python
         with:
           python-version: "3.13"
           cache: "pip"
+
+      - name: Cache venv
+        id: lint-venv-cache
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-py${{ steps.lint-python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Set up venv
+        if: steps.lint-venv-cache.outputs.cache-hit != 'true'
+        run: python -m venv .venv
+
+      - name: Install uv
+        run: pipx install uv
+
       - name: Install deps
         run: |
+          source .venv/bin/activate
           python -m pip install --upgrade pip
-          pip install -r requirements.txt black==24.10.0 mypy pandas-stubs types-requests pyarrow-stubs types-html5lib lxml-stubs scipy-stubs types-seaborn types-PyYAML
+          uv pip install -r requirements.txt black==24.10.0 mypy pandas-stubs types-requests pyarrow-stubs types-html5lib lxml-stubs scipy-stubs types-seaborn types-PyYAML      
+
       - name: mypy
-        run: mypy ./CandleNet/
+        run: |
+          source .venv/bin/activate
+          mypy ./CandleNet/
+
       - name: black (check)
-        run: black --check ./CandleNet/
+        run: |
+          source .venv/bin/activate
+          black --check ./CandleNet/
 
 
   test:
     runs-on: ubuntu-latest
     steps:
-        - uses: actions/checkout@v4
-        - uses: actions/setup-python@v5
-          with:
-            python-version: "3.13"
-            cache: "pip"
-        - name: Install Dependencies
-          run: |
-            python -m pip install --upgrade pip
-            pip install -r requirements.txt
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        id: test-python
+        with:
+          python-version: "3.13"
+          cache: "pip"
 
-        - name: Run CI Tests
-          run: |
-              PYTHONPATH=. python -m pytest ./tests/ --maxfail=3 -k "not web_access and not slow"
-          
+      - name: Cache venv
+        id: test-venv-cache
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-py${{ steps.test-python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Set up venv
+        if: steps.test-venv-cache.outputs.cache-hit != 'true'
+        run: python -m venv .venv
+
+      - name: Install uv
+        run: pipx install uv
+
+      - name: Install Dependencies
+        run: |
+          source .venv/bin/activate
+          pip install --upgrade pip
+          uv pip install -r requirements.txt
+
+      - name: Run CI Tests
+        run: |
+          source .venv/bin/activate
+          PYTHONPATH=. pytest ./tests/ --maxfail=5 -k "not web_access and not slow"

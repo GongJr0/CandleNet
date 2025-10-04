@@ -8,10 +8,10 @@ index:
 # Autoregressive feature generation settings.
 lagSelection:
   minLagsSelected: 2  # Minimum number of lags to select
-  maxLagsSelected: auto         # [int, "auto"] Select based on results of lag significance tests. "auto" uses min(20, log2(n)+2)
+  maxLagsSelected: auto         # [int, "auto"] Select based on results of lag significance tests. "auto" uses min(5, maxLag)
   maxLag: 20  # Maximum lag to consider
   selectionMethod: fdrAdjusted  # [fdrAdjusted, rawPval]
-  sigLevel: 0.05
+  sigLevel: 0.1
 
   requireStability: true
   stabilityFreq: 0.25  # Proportion of bootstrap samples in which a lag must be significant to be included

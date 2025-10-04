@@ -6,7 +6,7 @@ import statsmodels.api as sm  # type: ignore
 from statsmodels.stats.multitest import multipletests  # type: ignore
 from scipy.stats import norm  # type: ignore
 from CandleNet.logger import Logger, LogType, OriginType, CallerType
-
+from .fastlag.engine import _ols_hac_beta_t_vectorized
 
 from CandleNet.utils import SERIES
 from CandleNet import lag_config, LagConfig
@@ -260,6 +260,9 @@ def cbb_sample(
     else:
         raise ValueError("X must be 1D or 2D (time[, features]).")
 
+    if B <= 0:
+        raise ValueError("B must be positive.")
+
     n = X2.shape[0]
     p = X2.shape[1]
 
@@ -335,11 +338,11 @@ def bootstrapped_significance(
         max_lag (int): Maximum lag to evaluate (lags 1...max_lag).
         B (int): Number of bootstrap resamples to draw.
         block_len (int | "auto"): Block length for circular block bootstrap or "auto" to derive from sample size.
-        bandwidth (int | "auto"): Newey–West/HAC bandwidth to use for HAC-covariance estimation or "auto" to derive
+        bandwidth (int | "auto"): Newey-West/HAC bandwidth to use for HAC-covariance estimation or "auto" to derive
         from sample size.
         alpha (float): Significance level used when counting a lag as selected on each resample.
         rng (np.random.Generator | None): Random number generator; a default RNG is created when None.
-        use_fdr_end (bool): If True, apply Benjamini–Hochberg FDR to base-sample p-values for final reporting/selection.
+        use_fdr_end (bool): If True, apply Benjamini-Hochberg FDR to base-sample p-values for final reporting/selection.
         min_freq (float): Frequency threshold in [0,1] used to mark a lag as "stable" (freq >= min_freq).
         early_stop (bool): If True, allow early stopping of the bootstrap loop when Wilson intervals
         confidently decide lags.
@@ -418,7 +421,7 @@ def bootstrapped_significance(
             select_counts[mask] += sel
 
         # rank-based winner (for diagnostics only)
-        top = int(res_b["p"].nanargmin()) + 1  # raises ValueError if all NaN
+        top = int(np.nanargmin(res_b["p"])) + 1  # raises ValueError if all NaN
         top_rank_counts[top - 1] += 1
         # Early stopping check
         if early_stop and b >= b_min and (b % check_every == 0):
@@ -477,6 +480,127 @@ def bootstrapped_significance(
     return out.sort_values(
         ["selected", "freq", "top_freq"], ascending=[False, False, False]
     )
+
+
+def fast_bootstrapped_significance(
+    y: np.ndarray | pd.Series,
+    *,
+    max_lag: int,
+    bandwidth: int,  # pass resolved int here
+    B: int,
+    block_len: int,  # pass resolved int here
+    alpha: float,
+    use_fdr_end: bool,
+    min_freq: float,
+    early_stop: bool,
+    b_min: int,
+    check_every: int,
+    conf: float,
+    rng: np.random.Generator | None = None,
+) -> pd.DataFrame:
+    """
+    Drop-in replacement for bootstrapped_significance that uses the fast kernel.
+    Returns a DataFrame indexed by lag with columns:
+      ['p_base','reject_base_fdr','freq','stable','trials','top_freq','n','beta','t']
+    """
+    y = np.asarray(y, dtype=np.float64).ravel()
+    n = y.size
+    if n < 10:
+        # empty result with expected schema
+        idx = pd.Index(range(1, max_lag + 1), name="lag")
+        return pd.DataFrame(
+            index=idx,
+            columns=[
+                "p_base",
+                "reject_base_fdr",
+                "freq",
+                "stable",
+                "trials",
+                "top_freq",
+                "n",
+                "beta",
+                "t",
+            ],
+            dtype=float,
+        ).fillna(np.nan)
+
+    L = int(bandwidth)
+
+    # --- base sample (no pandas)
+    beta0, t0, n0 = _ols_hac_beta_t_vectorized(y, max_lag, L)
+    p0 = 2.0 * norm.sf(np.abs(t0))
+    reject_fdr = np.zeros_like(p0, dtype=bool)
+    if use_fdr_end:
+        reject_fdr, _, _, _ = multipletests(p0, alpha=alpha, method="fdr_bh")
+
+    # --- bootstrap (counts only)
+    Xb, _ = cbb_sample(y, B=B, block_len=block_len, rng=rng)  # shape (B, n)
+    select_counts = np.zeros(max_lag, dtype=np.int64)
+    top_counts = np.zeros(max_lag, dtype=np.int64)
+    decided = np.zeros(max_lag, dtype=bool)
+    decision_b = np.full(max_lag, -1, dtype=np.int64)
+    stable_flag = np.zeros(max_lag, dtype=bool)
+
+    for b in range(1, B + 1):
+        if early_stop and decided.all():
+            break
+
+        _, t_b, _ = _ols_hac_beta_t_vectorized(
+            Xb[b - 1].astype(np.float64, copy=False), max_lag, L
+        )
+        p_b = 2.0 * norm.sf(np.abs(t_b))
+
+        # update counts for undecided lags
+        m = ~decided
+        if m.any():
+            sel = p_b[m] < alpha  # bool
+            select_counts[m] += sel.astype(np.int64)
+
+        # track "top p" frequency
+        if np.isfinite(p_b).any():
+            top = int(np.nanargmin(p_b))
+            top_counts[top] += 1
+
+        # early stop via Wilson CI around freq
+        if early_stop and b >= b_min and (b % check_every == 0):
+            trials = np.where(decided, np.maximum(decision_b, 1), b).astype(np.float64)
+            lo, hi = _wilson_interval(
+                select_counts.astype(np.float64), trials, conf=conf
+            )
+            newly_stable = (~decided) & (lo >= min_freq)
+            newly_unstable = (~decided) & (hi < min_freq)
+            if newly_stable.any():
+                decided[newly_stable] = True
+                stable_flag[newly_stable] = True
+                decision_b[newly_stable] = b
+            if newly_unstable.any():
+                decided[newly_unstable] = True
+                stable_flag[newly_unstable] = False
+                decision_b[newly_unstable] = b
+
+    # finalize frequency and trials
+    trials = np.where(decision_b > 0, decision_b, min(B, len(Xb))).astype(np.float64)
+    freq = select_counts / np.maximum(trials, 1.0)
+    top_f = top_counts / max(B, 1)
+    stable_flag = np.logical_or(stable_flag, freq >= min_freq)
+
+    # --- Build the DF once (shape identical to the slow path)
+    idx = pd.Index(range(1, max_lag + 1), name="lag")
+    out = pd.DataFrame(
+        {
+            "p_base": p0,
+            "reject_base_fdr": reject_fdr,
+            "freq": freq,
+            "stable": stable_flag,
+            "trials": trials,
+            "top_freq": top_f,
+            "n": n0.astype(np.float64),
+            "beta": beta0,
+            "t": t0,
+        },
+        index=idx,
+    )
+    return out
 
 
 def _auto_block_len(n: int) -> int:
@@ -558,7 +682,11 @@ def _resolve_lag_cfg(params: LagConfig, n: int) -> dict:
     }
 
 
-def select_lags(y: pd.Series, _debug: bool = False) -> list:
+def select_lags(
+    y: pd.Series,
+    engine: Literal["statsmodels", "numba"] = "statsmodels",
+    _debug: bool = False,
+) -> list:
     """
     Select time-series lags deemed significant by a bootstrap stability procedure combined with HAC-robust lag testing.
 
@@ -581,25 +709,49 @@ def select_lags(y: pd.Series, _debug: bool = False) -> list:
 
     r = _resolve_lag_cfg(params, n)
     # run the test
-    res = bootstrapped_significance(
-        y,
-        max_lag=r["max_lag"],
-        B=r["B"],
-        block_len=r["block_len"],
-        bandwidth=(
-            params["hacBandwidth"]
-            if params["hacBandwidth"] != "auto"
-            else r["bandwidth"]
-        ),
-        alpha=params["sigLevel"],
-        use_fdr_end=(params["selectionMethod"] == "fdrAdjusted"),
-        min_freq=params["stabilityFreq"] if params["requireStability"] else 0.0,
-        early_stop=params["earlyStop"],
-        b_min=params["minBootstrapSamples"],
-        check_every=params["stabilityCheckEvery"],
-        conf=params["stabilityConfidence"],
-        rng=rng,
-    )
+    if engine == "statsmodels":
+        res = bootstrapped_significance(
+            y,
+            max_lag=r["max_lag"],
+            B=r["B"],
+            block_len=r["block_len"],
+            bandwidth=(
+                params["hacBandwidth"]
+                if params["hacBandwidth"] != "auto"
+                else r["bandwidth"]
+            ),
+            alpha=params["sigLevel"],
+            use_fdr_end=(params["selectionMethod"] == "fdrAdjusted"),
+            min_freq=params["stabilityFreq"] if params["requireStability"] else 0.0,
+            early_stop=params["earlyStop"],
+            b_min=params["minBootstrapSamples"],
+            check_every=params["stabilityCheckEvery"],
+            conf=params["stabilityConfidence"],
+            rng=rng,
+        )
+
+    elif engine == "numba":
+        res = fast_bootstrapped_significance(
+            y,
+            max_lag=r["max_lag"],
+            B=r["B"],
+            block_len=r["block_len"],
+            bandwidth=(
+                params["hacBandwidth"]
+                if params["hacBandwidth"] != "auto"
+                else r["bandwidth"]
+            ),
+            alpha=params["sigLevel"],
+            use_fdr_end=(params["selectionMethod"] == "fdrAdjusted"),
+            min_freq=params["stabilityFreq"] if params["requireStability"] else 0.0,
+            early_stop=params["earlyStop"],
+            b_min=params["minBootstrapSamples"],
+            check_every=params["stabilityCheckEvery"],
+            conf=params["stabilityConfidence"],
+            rng=rng,
+        )
+    else:
+        raise ValueError(f"Unsupported engine: {engine}")
 
     # --- Build mask(s)
     if params["selectionMethod"] == "fdrAdjusted":
