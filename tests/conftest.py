@@ -1,6 +1,6 @@
 from pytest import fixture
 from CandleNet.logger import LogType, OriginType, CallerType
-from CandleNet.ticker.ticker import gspc_from_cache
+from CandleNet.ticker.ticker import get_tickers_from_cache
 from CandleNet.cache.ticker_cache import TickerCache
 from CandleNet.ticker.ticker import Ticker
 from CandleNet.synergy_matrix import Synergy
@@ -29,17 +29,27 @@ def log_type():
         [LogType.EVENT, LogType.WARNING, LogType.ERROR, LogType.STATUS]
     )
 
+
 @fixture
 def caller():
     return random.choice([CallerType.TICKER, CallerType.CACHE, CallerType.UTILS,
                           CallerType.AUTOREG, CallerType.SYNERGY, CallerType.SCALERS,
                           CallerType.SENTIMENT])
 
+
 @fixture(scope="session")
 def sp500_symbols():
     # If gspc_from_cache returns a dict[symbol -> Ticker], adapt:
-    cached = gspc_from_cache()
-    return list(cached) if isinstance(cached, dict) else cached  # robust
+    """
+    Get the S&P 500 ticker symbols from the local ticker cache.
+    
+    If the cache returns a mapping of symbol -> Ticker, returns the mapping's keys as a list; otherwise returns the cached sequence as-is.
+    
+    Returns:
+        symbols (list[str]): List of ticker symbol strings.
+    """
+    cached = get_tickers_from_cache()
+    return list(cached.keys()) if isinstance(cached, dict) else cached  # robust
 
 
 @fixture(scope="function")
@@ -63,6 +73,7 @@ def arr():
     size = size**2  # len(arr) == len(ndarray) with same rng
     return np.random.randn(size, 1) * (10**mag)
 
+
 @fixture
 def ndarray():
     mag = random.randint(1, 6)
@@ -83,8 +94,13 @@ def _seed_numpy():
 
 @fixture(scope="session", autouse=False)
 def _gspc_to_txt():
+    """
+    Ensure a local ./data directory exists and write the current list of S&P 500 tickers to ./data/gspc.txt, one ticker per line.
+    
+    This overwrites any existing ./data/gspc.txt file.
+    """
     os.makedirs("./data/", exist_ok=True)
-    ticker_list = gspc_from_cache()
+    ticker_list = get_tickers_from_cache()
 
     with open("./data/gspc.txt", "w") as f:
         f.write("\n".join(ticker_list))
