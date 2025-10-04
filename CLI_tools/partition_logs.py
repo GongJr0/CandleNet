@@ -145,6 +145,34 @@ class LogSplitter:
                 for entry in entries:
                     pf.write(json.dumps(entry) + "\n")
 
+    def by_caller(self) -> None:
+        """Create Log files partitioned by log caller."""
+        logs = self.LOGS
+        if not os.path.exists(logs):
+            print("No logs found to partition.")
+            return
+
+        partitions = {}
+        with open(logs, "r", encoding="utf-8") as f:
+            for log in f:
+                if not log.strip():
+                    continue
+                try:
+                    entry = json.loads(log)
+                except json.JSONDecodeError:
+                    continue
+                caller = str(entry.get("caller", "unknown"))
+                partitions.setdefault(caller, []).append(entry)
+
+        partition_dir = os.path.join(self._log_dir, "caller_partition")
+        os.makedirs(partition_dir, exist_ok=True)
+        for caller, entries in partitions.items():
+            safe = _safe_filename(caller)
+            partition_file = os.path.join(partition_dir, f"logs_{safe}.jsonl")
+            with open(partition_file, "w", encoding="utf-8") as pf:
+                for entry in entries:
+                    pf.write(json.dumps(entry) + "\n")
+
     @property
     def LOGS(self) -> str:
         log_file = os.path.join(self._log_dir, "candlenet_logs.jsonl")
@@ -175,6 +203,7 @@ if __name__ == "__main__":
     group.add_argument(
         "--by_origin", action="store_true", help="Partition logs by origin."
     )
+    group.add_argument("--by_caller", action="store_true", help="Partition logs by caller.")
     args = arg_parser.parse_args()
 
     splitter = LogSplitter()
@@ -185,3 +214,5 @@ if __name__ == "__main__":
         splitter.by_type()
     elif args.by_origin:
         splitter.by_origin()
+    elif args.by_caller:
+        splitter.by_caller()

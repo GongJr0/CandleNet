@@ -101,3 +101,11 @@ def str_encode(s: str) -> int:
     hash_hex = _hash_str(s)
     hash_int = int(hash_hex, 16)
     return hash_int & ((1 << 64) - 1)
+
+
+def demean(arr: SERIES) -> SERIES:
+    """Demean a 1D array or Series."""
+    assert arr.ndim == 1 and hasattr(arr, "mean"), (
+        "Input must be 1D with a mean method " "(e.g., pd.Series or 1D np.ndarray)"
+    )
+    return arr - arr.mean()

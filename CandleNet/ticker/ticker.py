@@ -28,6 +28,7 @@ class Ticker:
             self.data = _from_cache
             self.raw_data = None
             self.news: dict | None = None
+            self._log_ret: Optional[pd.Series] = None
             return
 
         if not _from_bulk_download:
@@ -94,6 +95,8 @@ class Ticker:
             hilo=hilo,
             sentiment=sentiment,
         )
+
+        self._log_ret = None
 
     def process_news(self) -> tuple[list[str], list[str], list[str]]:
         assert self.news is not None
@@ -168,6 +171,18 @@ class Ticker:
         if self._ticker is None:
             self._ticker = yf.Ticker(self.symbol)
         return self._ticker
+
+    @property
+    def log_returns(self) -> pd.Series:
+        if self._log_ret is None:
+            self._log_ret = np.log(self.price).diff(5).dropna()
+        return self._log_ret
+
+    @property
+    def log_ret_no_overlap(self) -> pd.Series:
+        if self._log_ret is None:
+            self._log_ret = np.log(self.price).diff(5).dropna()
+        return self._log_ret.iloc[::5]
 
 
 def _get_gspc() -> list:
