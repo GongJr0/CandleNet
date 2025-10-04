@@ -17,13 +17,14 @@ jobs:
           cache: "pip"
 
       - name: Cache venv
+        id: lint-venv-cache
         uses: actions/cache@v4
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
 
       - name: Set up venv
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.lint-venv-cache.outputs.cache-hit != 'true'
         run: python -m venv .venv
 
       - name: Install uv
@@ -56,13 +57,14 @@ jobs:
           cache: "pip"
 
       - name: Cache venv
+        id: test-venv-cache
         uses: actions/cache@v4
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
 
       - name: Set up venv
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.test-venv-cache.outputs.cache-hit != 'true'
         run: python -m venv .venv
 
       - name: Install uv
