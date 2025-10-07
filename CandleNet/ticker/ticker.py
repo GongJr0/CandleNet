@@ -175,11 +175,11 @@ class Ticker:
     @property
     def log_returns(self) -> pd.Series:
         if self._log_ret is None:
-            self._log_ret = np.log(self.price).diff(5).dropna()
+            self._log_ret = np.log(self.price).diff().dropna()
         return self._log_ret
 
     @property
-    def log_ret_no_overlap(self) -> pd.Series:
+    def weekly_log_ret_no_overlap(self) -> pd.Series:
         if self._log_ret is None:
             self._log_ret = np.log(self.price).diff(5).dropna()
         return self._log_ret.iloc[::5]

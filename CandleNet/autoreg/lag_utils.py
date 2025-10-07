@@ -12,6 +12,10 @@ from CandleNet.utils import SERIES
 from CandleNet import lag_config, LagConfig
 
 
+def get_lag_cols(n: int) -> list[str]:
+    return [f"T-{x+1}" for x in range(n)]
+
+
 def _is_int_like(x: Any) -> bool:
     if not hasattr(x, "__int__"):
         return False
@@ -21,7 +25,7 @@ def _is_int_like(x: Any) -> bool:
 
 def get_formatted_arr(arr: SERIES) -> pd.DataFrame:
     """
-    Convert a 1D series or array-like into a pandas DataFrame with a single column named "T".
+    Convert a 1D series or array-like into a pandas DataFrame with a single column named "T-0".
 
     Parameters:
         arr (Series | np.ndarray | array-like): One-dimensional input sequence to convert.
@@ -36,34 +40,40 @@ def get_formatted_arr(arr: SERIES) -> pd.DataFrame:
     assert arr_np.ndim == 1, "Input must be 1-dimensional"
 
     if isinstance(arr, pd.Series):
-        df = pd.DataFrame(arr.values, columns=["T"])
+        df = pd.DataFrame(arr.values, columns=["T-0"])
 
     elif isinstance(arr, np.ndarray):
-        df = pd.DataFrame(arr, columns=["T"])
+        df = pd.DataFrame(arr, columns=["T-0"])
 
     else:
-        df = pd.DataFrame(arr, columns=["T"])
+        df = pd.DataFrame(arr, columns=["T-0"])
 
     return df
 
 
-def get_lags(arr: SERIES, n_lags: int) -> pd.DataFrame:
-    """Generate a DataFrame of lagged versions of the input series. NaNs are not dropped."""
+def get_lags(arr: SERIES, n_lags: int, include_t0: bool = False) -> pd.DataFrame:
+    """Generate a DataFrame of lagged versions of the input series."""
     df = get_formatted_arr(arr)
 
     for i in range(1, n_lags + 1):
         df[f"T-{i}"] = df["T"].shift(i)
 
+    if not include_t0:
+        df = df.drop(columns=["T-0"])
+    df = df.dropna(how="any").reset_index(drop=True)
     return df
 
 
-def get_lag(arr: SERIES, lags: list[int]) -> pd.DataFrame:
-    """Generate a DataFrame of lagged versions of the input series. NaNs are not dropped."""
+def get_lag(arr: SERIES, lags: list[int], include_t0: bool = False) -> pd.DataFrame:
+    """Generate a DataFrame of lagged versions of the input series."""
     df = get_formatted_arr(arr)
 
     for i in lags:
-        df[f"T-{i}"] = df["T"].shift(i)
+        df[f"T-{i}"] = df["T-0"].shift(i)
 
+    if not include_t0:
+        df = df.drop(columns=["T-0"])
+    df = df.dropna(how="any").reset_index(drop=True)
     return df
 
 

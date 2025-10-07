@@ -14,8 +14,8 @@ lagSelection:
   sigLevel: 0.1
 
   requireStability: true
-  stabilityFreq: 0.25  # Proportion of bootstrap samples in which a lag must be significant to be included
-  stabilityConfidence: 0.95  # Confidence level for stability check
+  stabilityFreq: 0.1  # Proportion of bootstrap samples in which a lag must be significant to be included
+  stabilityConfidence: 0.75  # Confidence level for stability check
   stabilityCheckEvery: 25  # Check stability every N bootstrap samples
 
   bootstrapSamples: 500  # Number of bootstrap samples to draw (Disable early stop to guarantee all samples are drawn)

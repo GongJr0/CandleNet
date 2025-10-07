@@ -1,8 +1,11 @@
 import numpy as np
+from numba import njit  # type: ignore[import-untyped]
 import pandas as pd
 from typing import Union, Callable, Any
 from functools import reduce
 from hashlib import sha256
+import string
+
 
 FRAME = Union[pd.DataFrame, np.ndarray, pd.Series]
 SERIES = Union[pd.Series, np.ndarray]
@@ -109,3 +112,10 @@ def demean(arr: SERIES) -> SERIES:
         "Input must be 1D with a mean method " "(e.g., pd.Series or 1D np.ndarray)"
     )
     return arr - arr.mean()
+
+
+def get_integer_lag(s: str) -> int:
+    n = "".join([c if c in string.digits else "" for c in s])
+    if not n:
+        return -1
+    return int(n)
